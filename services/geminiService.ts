@@ -1,16 +1,20 @@
+
 import { GoogleGenAI } from "@google/genai";
 
 const getClient = () => {
+  // Use process.env.API_KEY directly as per guidelines
   const apiKey = process.env.API_KEY;
   if (!apiKey) {
     throw new Error("API Key not found");
   }
+  // Initialize with named parameter
   return new GoogleGenAI({ apiKey });
 };
 
 export const generateScriptIdea = async (topic: string, style: string): Promise<string> => {
   try {
     const ai = getClient();
+    // Using gemini-3-flash-preview as per task type recommendation
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `请为一个视频创作详细的脚本大纲，内容必须使用中文。
@@ -23,6 +27,7 @@ export const generateScriptIdea = async (topic: string, style: string): Promise<
       4. 结尾号召 (Call to Action)`,
     });
     
+    // Access .text property directly, not as a method
     return response.text || "未能生成回复。";
   } catch (error) {
     console.error("Gemini API Error:", error);

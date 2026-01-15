@@ -1,3 +1,4 @@
+
 export type TaskPriority = 'Low' | 'Medium' | 'High';
 
 export interface TaskStatusDef {
@@ -37,13 +38,23 @@ export interface ScriptPrompt {
   createdAt: string;
 }
 
+export interface DocItem {
+  id: string;
+  title: string;
+  content: string;
+  category: string;
+  updatedAt: string;
+  author: string;
+}
+
 export interface AssetItem {
   id: string;
   name: string;
-  dataUrl: string; // Base64
+  dataUrl: string;
   type: 'image' | 'reference';
 }
 
+// Added missing Character interface
 export interface Character {
   id: string;
   name: string;
@@ -58,4 +69,4 @@ export interface User {
   isApproved: boolean;
 }
 
-export type ViewState = 'tasks' | 'finance' | 'prompts' | 'assets' | 'characters';
+export type ViewState = 'tasks' | 'finance' | 'prompts' | 'assets' | 'documents';
