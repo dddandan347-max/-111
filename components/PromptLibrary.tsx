@@ -16,7 +16,6 @@ export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddProm
   const [generatedContent, setGeneratedContent] = useState('');
   const [activePromptId, setActivePromptId] = useState<string | null>(null);
   
-  // 查找替换状态
   const [showSearch, setShowSearch] = useState(false);
   const [findText, setFindText] = useState('');
   const [replaceText, setReplaceText] = useState('');
@@ -78,17 +77,10 @@ export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddProm
         : new Date().toISOString()
     };
 
-    // CRITICAL: 这里必须调用外部传入的 onAddPrompt，它在 App.tsx 中负责真正的 Supabase 写入
-    if (activePromptId) {
-       // 如果是修改旧的，App.tsx 里的逻辑通常是先删再插，或者你需要 App 支持 update
-       // 根据你 App.tsx 的 handleAddPrompt 实现，它使用 insert。
-       // 我们先执行删除旧的，再插入新的以同步数据库。
-       onDeletePrompt(activePromptId);
-    }
-    
+    // 这里调用 App.tsx 的 handleAddPrompt，内部使用了 upsert，不需要先删后插
     onAddPrompt(promptData);
     setActivePromptId(promptData.id);
-    alert("剧本已同步至数据库！");
+    alert("剧本已保存并同步至数据库！");
   };
 
   const startNewPrompt = () => {
@@ -109,7 +101,7 @@ export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddProm
   const deletePrompt = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if(confirm("确定要删除此剧本吗？此操作不可撤销。")) {
-        onDeletePrompt(id); // 这里直接调用 App.tsx 的数据库删除逻辑
+        onDeletePrompt(id);
         if (activePromptId === id) {
             startNewPrompt();
         }
