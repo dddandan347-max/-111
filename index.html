@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>StudioSync | 团队协作中心</title>
+    <title>StudioSync</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -12,7 +11,6 @@
           extend: {
             colors: {
               studio: {
-                950: '#020617',
                 900: '#0f172a',
                 800: '#1e293b',
                 700: '#334155',
@@ -21,16 +19,17 @@
             },
             keyframes: {
               popIn: {
-                '0%': { transform: 'scale(0.95)', opacity: '0' },
+                '0%': { transform: 'scale(0.9)', opacity: '0' },
                 '100%': { transform: 'scale(1)', opacity: '1' },
               },
-              shimmer: {
-                '100%': { transform: 'translateX(100%)' },
+              slideUp: {
+                '0%': { transform: 'translateY(10px)', opacity: '0' },
+                '100%': { transform: 'translateY(0)', opacity: '1' },
               }
             },
             animation: {
-              popIn: 'popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
-              shimmer: 'shimmer 2s infinite',
+              popIn: 'popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+              slideUp: 'slideUp 0.3s ease-out forwards',
             }
           }
         }
@@ -38,19 +37,24 @@
     </script>
     <style>
       body {
-        background: radial-gradient(circle at top left, #0f172a, #020617);
+        background-color: #0f172a;
         color: #f8fafc;
-        min-height: 100vh;
       }
-      .glass {
-        background: rgba(15, 23, 42, 0.7);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
+      /* Custom scrollbar for webkit */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
       }
-      ::-webkit-scrollbar { width: 6px; height: 6px; }
-      ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-      ::-webkit-scrollbar-thumb:hover { background: #475569; }
+      ::-webkit-scrollbar-track {
+        background: #1e293b; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #475569; 
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #64748b; 
+      }
     </style>
   <script type="importmap">
 {
@@ -59,7 +63,6 @@
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "react/": "https://esm.sh/react@^19.2.3/",
     "recharts": "https://esm.sh/recharts@^3.6.0",
-    "lucide-react": "https://esm.sh/lucide-react@0.344.0",
     "@google/genai": "https://esm.sh/@google/genai@^1.35.0",
     "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.39.3"
   }
