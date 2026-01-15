@@ -18,17 +18,17 @@ const PRIORITY_CONFIG = {
   'High': { 
     dark: 'text-red-400 bg-red-400/10 border-red-400/20', 
     light: 'text-rose-600 bg-rose-50 border-rose-100',
-    label: '高优先级' 
+    label: '高' 
   },
   'Medium': { 
     dark: 'text-orange-400 bg-orange-400/10 border-orange-400/20', 
     light: 'text-amber-600 bg-amber-50 border-amber-100',
-    label: '中优先级' 
+    label: '中' 
   },
   'Low': { 
     dark: 'text-blue-400 bg-blue-400/10 border-blue-400/20', 
     light: 'text-sky-600 bg-sky-50 border-sky-100',
-    label: '低优先级' 
+    label: '低' 
   },
 };
 
@@ -44,29 +44,28 @@ const TaskRow: React.FC<{
     currentUser: string;
     theme: 'dark' | 'light';
 }> = ({ task, statuses, tags, expandedTaskId, setExpandedTaskId, onUpdateTask, onDeleteTask, getStatusColor, currentUser, theme }) => {
+    // 本地状态：确保输入流畅，不频繁触发父组件重绘和数据库请求
     const [localTitle, setLocalTitle] = useState(task.title);
     const [localTag, setLocalTag] = useState(task.tag);
+    const [localAssignee, setLocalAssignee] = useState(task.assignee);
     const [isEditingAssignee, setIsEditingAssignee] = useState(false);
 
     useEffect(() => {
         setLocalTitle(task.title);
         setLocalTag(task.tag);
-    }, [task.title, task.tag]);
+        setLocalAssignee(task.assignee);
+    }, [task.title, task.tag, task.assignee]);
 
-    const syncUpdate = (field: keyof VideoTask, value: any) => {
+    const handleSync = (field: keyof VideoTask, value: any) => {
         if (task[field] === value) return;
         onUpdateTask({ ...task, [field]: value });
-    };
-
-    const handleClaim = () => {
-        syncUpdate('assignee', currentUser);
     };
 
     return (
         <React.Fragment>
             <tr className={`transition-all duration-300 ${
               expandedTaskId === task.id 
-                ? (theme === 'dark' ? 'bg-slate-800/60' : 'bg-blue-50/50') 
+                ? (theme === 'dark' ? 'bg-slate-800/60' : 'bg-rose-50/50') 
                 : (theme === 'dark' ? 'hover:bg-slate-800/40' : 'hover:bg-white hover:shadow-mochi-sm')
             }`}>
                 <td className="px-2 py-5 text-center">
@@ -77,43 +76,44 @@ const TaskRow: React.FC<{
                 <td className="px-4 py-5">
                     <select 
                       value={task.priority} 
-                      onChange={(e) => syncUpdate('priority', e.target.value)} 
+                      onChange={(e) => handleSync('priority', e.target.value)} 
                       className={`appearance-none cursor-pointer px-3 py-1.5 rounded-xl text-[10px] font-black border tracking-wider w-full text-center outline-none transition-all hover:scale-105 ${theme === 'dark' ? PRIORITY_CONFIG[task.priority].dark : PRIORITY_CONFIG[task.priority].light}`}
                     >
-                        <option value="High" className={theme === 'dark' ? 'bg-slate-900' : 'bg-white'}>High</option>
-                        <option value="Medium" className={theme === 'dark' ? 'bg-slate-900' : 'bg-white'}>Medium</option>
-                        <option value="Low" className={theme === 'dark' ? 'bg-slate-900' : 'bg-white'}>Low</option>
+                        <option value="High">HIGH</option>
+                        <option value="Medium">MID</option>
+                        <option value="Low">LOW</option>
                     </select>
                 </td>
                 <td className="px-4 py-5">
                     <select 
                       value={task.status} 
-                      onChange={(e) => syncUpdate('status', e.target.value)} 
+                      onChange={(e) => handleSync('status', e.target.value)} 
                       className={`w-full appearance-none cursor-pointer pl-4 pr-2 py-2 rounded-xl text-xs font-black border outline-none transition-all hover:shadow-sm ${getStatusColor(task.status)}`}
                     >
-                        {statuses.map(s => <option key={s.id} value={s.id} className={theme === 'dark' ? 'bg-slate-900' : 'bg-white'}>{s.label}</option>)}
+                        {statuses.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
                     </select>
                 </td>
                 <td className="px-4 py-5">
-                    <div className="flex flex-col gap-1.5">
+                    <div className="flex flex-col gap-1">
                         <input 
                             type="text" 
                             value={localTitle} 
                             onChange={(e) => setLocalTitle(e.target.value)}
-                            onBlur={() => syncUpdate('title', localTitle)}
-                            onKeyDown={(e) => e.key === 'Enter' && syncUpdate('title', localTitle)}
-                            className={`bg-transparent font-black text-base focus:outline-none w-full ${theme === 'dark' ? 'text-slate-200 focus:border-b-2 border-blue-500' : 'text-slate-700 focus:text-rose-500'}`} 
+                            onBlur={() => handleSync('title', localTitle)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSync('title', localTitle)}
+                            placeholder="任务标题..."
+                            className={`bg-transparent font-black text-base focus:outline-none w-full border-b border-transparent focus:border-rose-400/30 transition-colors ${theme === 'dark' ? 'text-slate-200 focus:text-white' : 'text-slate-700 focus:text-rose-500'}`} 
                         />
                         <div className="flex items-center gap-2">
-                          <span className={`text-[10px] font-black uppercase opacity-40 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>Tag:</span>
                           <input 
                               type="text" 
                               list={`tags-${task.id}`}
                               value={localTag} 
-                              placeholder="分类..."
+                              placeholder="# 添加标签"
                               onChange={(e) => setLocalTag(e.target.value)} 
-                              onBlur={() => syncUpdate('tag', localTag)}
-                              className={`bg-transparent text-[11px] font-bold border-none outline-none w-24 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400 focus:text-blue-500'}`} 
+                              onBlur={() => handleSync('tag', localTag)}
+                              onKeyDown={(e) => e.key === 'Enter' && handleSync('tag', localTag)}
+                              className={`bg-transparent text-[11px] font-bold border-none outline-none w-full opacity-40 hover:opacity-100 focus:opacity-100 transition-opacity ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`} 
                           />
                         </div>
                         <datalist id={`tags-${task.id}`}>
@@ -125,36 +125,35 @@ const TaskRow: React.FC<{
                     {isEditingAssignee ? (
                         <input 
                             autoFocus
-                            className={`text-xs px-3 py-2 rounded-xl border outline-none w-full font-bold ${theme === 'dark' ? 'bg-slate-800 text-white border-blue-500' : 'bg-white text-slate-800 border-rose-300'}`} 
-                            value={task.assignee} 
-                            onChange={(e) => syncUpdate('assignee', e.target.value)}
-                            onBlur={() => setIsEditingAssignee(false)}
-                            onKeyDown={(e) => e.key === 'Enter' && setIsEditingAssignee(false)}
+                            className={`text-xs px-3 py-2 rounded-xl border outline-none w-full font-bold shadow-sm ${theme === 'dark' ? 'bg-slate-800 text-white border-blue-500' : 'bg-white text-slate-800 border-rose-300 ring-4 ring-rose-50'}`} 
+                            value={localAssignee} 
+                            onChange={(e) => setLocalAssignee(e.target.value)}
+                            onBlur={() => { setIsEditingAssignee(false); handleSync('assignee', localAssignee); }}
+                            onKeyDown={(e) => e.key === 'Enter' && (e.currentTarget.blur())}
                         />
                     ) : (
-                        task.assignee ? (
+                        localAssignee ? (
                             <div 
                                 onClick={() => setIsEditingAssignee(true)}
                                 className="flex items-center gap-3 group/assignee cursor-pointer"
                             >
                                 <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black border transition-all ${theme === 'dark' ? 'bg-blue-600/10 text-blue-400 border-blue-500/30' : 'bg-mochi-pink text-white border-transparent shadow-mochi-sm group-hover/assignee:scale-110'}`}>
-                                    {task.assignee.charAt(0).toUpperCase()}
+                                    {localAssignee.charAt(0).toUpperCase()}
                                 </div>
-                                <span className={`text-sm font-black transition-colors ${theme === 'dark' ? 'text-slate-300 hover:text-blue-400' : 'text-slate-700 hover:text-rose-500'}`}>{task.assignee}</span>
+                                <span className={`text-sm font-black transition-colors ${theme === 'dark' ? 'text-slate-300 hover:text-blue-400' : 'text-slate-700 hover:text-rose-500'}`}>{localAssignee}</span>
                             </div>
                         ) : (
                             <button 
-                                onClick={handleClaim}
-                                className={`w-full flex items-center justify-center gap-2 py-2 border border-dashed rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${theme === 'dark' ? 'border-slate-700 text-slate-500 hover:border-blue-500 hover:text-blue-400' : 'border-mochi-border text-slate-400 hover:border-rose-400 hover:text-rose-500 hover:bg-rose-50'}`}
+                                onClick={() => handleSync('assignee', currentUser)}
+                                className={`w-full flex items-center justify-center gap-2 py-2 border border-dashed rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${theme === 'dark' ? 'border-slate-700 text-slate-500 hover:border-blue-500 hover:text-blue-400' : 'border-mochi-border text-slate-400 hover:border-rose-400 hover:text-rose-500 hover:bg-rose-50 shadow-sm'}`}
                             >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
                                 认领
                             </button>
                         )
                     )}
                 </td>
                 <td className="px-4 py-5">
-                    <input type="date" value={task.deadline} onChange={(e) => syncUpdate('deadline', e.target.value)} className={`bg-transparent outline-none cursor-pointer text-xs font-bold ${theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-rose-500'}`} />
+                    <input type="date" value={task.deadline} onChange={(e) => handleSync('deadline', e.target.value)} className={`bg-transparent outline-none cursor-pointer text-xs font-bold ${theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-rose-500'}`} />
                 </td>
                 <td className="px-4 py-5 text-center">
                     <button onClick={() => onDeleteTask(task.id)} className={`p-2 rounded-xl transition-all ${theme === 'dark' ? 'text-slate-600 hover:text-rose-500 hover:bg-rose-500/10' : 'text-slate-300 hover:text-rose-500 hover:bg-rose-50'}`}>
@@ -168,10 +167,10 @@ const TaskRow: React.FC<{
                         <div className="flex flex-col gap-2">
                           <label className={`text-[10px] font-black uppercase tracking-widest ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>任务详情说明</label>
                           <textarea 
-                              className={`w-full rounded-2xl p-5 text-sm focus:outline-none min-h-[120px] transition-all border ${theme === 'dark' ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-white border-mochi-border text-slate-700 shadow-mochi-sm'}`} 
+                              className={`w-full rounded-2xl p-5 text-sm focus:outline-none min-h-[120px] transition-all border ${theme === 'dark' ? 'bg-slate-900 border-slate-700 text-slate-200 focus:border-blue-500' : 'bg-white border-mochi-border text-slate-700 shadow-mochi-sm focus:border-rose-400'}`} 
                               placeholder="在此记录任务的关键环节、参考链接或特别说明..." 
                               defaultValue={task.notes || ''} 
-                              onBlur={(e) => syncUpdate('notes', e.target.value)} 
+                              onBlur={(e) => handleSync('notes', e.target.value)} 
                           />
                         </div>
                     </td>
@@ -193,7 +192,6 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
       const s = statuses.find(x => x.id === statusId);
       if (!s) return '';
       if (theme === 'light') {
-          // Map dark mode status colors to cute light mode colors
           if (statusId === 'Idea') return 'bg-purple-100 text-purple-600 border-purple-200';
           if (statusId === 'Scripting') return 'bg-amber-100 text-amber-600 border-amber-200';
           if (statusId === 'Filming') return 'bg-rose-100 text-rose-600 border-rose-200';
@@ -203,16 +201,27 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
       return s.color;
   };
 
+  const handleAddTask = () => {
+    if (!newTaskTitle) return;
+    onAddTask({
+        id: Date.now().toString(),
+        title: newTaskTitle,
+        status: statuses[0].id,
+        assignee: '',
+        deadline: new Date(Date.now() + 604800000).toISOString().split('T')[0],
+        startDate: new Date().toISOString().split('T')[0],
+        priority: 'Medium',
+        tag: tags[0] || '常规',
+    });
+    setNewTaskTitle('');
+  };
+
   return (
     <div className="h-full flex flex-col space-y-8 animate-fadeIn">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-            <h2 className={`text-4xl font-black tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
-              视频看板
-            </h2>
-            <p className={`text-sm mt-2 font-bold opacity-60 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
-              全流程可视化协作，把每个创意变为现实 ✨
-            </p>
+            <h2 className={`text-4xl font-black tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>视频看板</h2>
+            <p className={`text-sm mt-2 font-bold opacity-60 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>高效协作，让创意落地 ✨</p>
         </div>
         <div className="relative group">
             <input
@@ -225,22 +234,13 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
                 }`}
                 value={newTaskTitle}
                 onChange={(e) => setNewTaskTitle(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && newTaskTitle && (onAddTask({
-                    id: Date.now().toString(),
-                    title: newTaskTitle,
-                    status: statuses[0].id,
-                    assignee: '',
-                    deadline: new Date(Date.now() + 604800000).toISOString().split('T')[0],
-                    startDate: new Date().toISOString().split('T')[0],
-                    priority: 'Medium',
-                    tag: tags[0],
-                }), setNewTaskTitle(''))}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
             />
-            <div className="absolute right-3 top-3">
-              <div className={`p-1.5 rounded-xl ${theme === 'dark' ? 'bg-slate-700' : 'bg-mochi-pink text-white shadow-sm'}`}>
+            <button onClick={handleAddTask} className="absolute right-3 top-3">
+              <div className={`p-1.5 rounded-xl transition-transform active:scale-90 ${theme === 'dark' ? 'bg-slate-700' : 'bg-mochi-pink text-white shadow-sm'}`}>
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
               </div>
-            </div>
+            </button>
         </div>
       </div>
 
@@ -255,8 +255,8 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
               <tr className={`text-[10px] font-black uppercase tracking-[0.2em] transition-colors ${theme === 'dark' ? 'bg-slate-800 text-slate-500' : 'bg-mochi-mint/50 text-teal-600'}`}>
                 <th className="px-4 py-6 w-14 text-center"></th>
                 <th className="px-4 py-6 w-32 text-center">优先级</th>
-                <th className="px-4 py-6 w-40">当前阶段</th>
-                <th className="px-4 py-6 min-w-[300px]">视频内容详情</th>
+                <th className="px-4 py-6 w-40">状态</th>
+                <th className="px-4 py-6 min-w-[300px]">视频内容</th>
                 <th className="px-4 py-6 w-48">负责人</th>
                 <th className="px-4 py-6 w-40">截止期</th>
                 <th className="px-4 py-6 w-20 text-center">操作</th>
@@ -281,9 +281,9 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
               {tasks.length === 0 && (
                   <tr>
                       <td colSpan={8} className="py-32 text-center">
-                          <div className="flex flex-col items-center opacity-30">
+                          <div className={`flex flex-col items-center opacity-30 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>
                             <span className="text-6xl mb-4">🎈</span>
-                            <p className="font-black italic uppercase tracking-widest text-sm">No Active Tasks</p>
+                            <p className="font-black italic uppercase tracking-widest text-sm">暂无任务</p>
                           </div>
                       </td>
                   </tr>
