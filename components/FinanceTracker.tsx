@@ -4,13 +4,14 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LineCh
 
 interface FinanceProps {
   transactions: Transaction[];
-  setTransactions: (t: Transaction[]) => void;
+  onAddTransaction: (t: Transaction) => void;
+  onDeleteTransaction: (id: string) => void;
   tasks: VideoTask[];
   categories: string[];
-  setCategories: (c: string[]) => void;
+  onUpdateCategories: (c: string[]) => void;
 }
 
-export const FinanceTracker: React.FC<FinanceProps> = ({ transactions, setTransactions, tasks, categories, setCategories }) => {
+export const FinanceTracker: React.FC<FinanceProps> = ({ transactions, onAddTransaction, onDeleteTransaction, tasks, categories, onUpdateCategories }) => {
   // Input State
   const [desc, setDesc] = useState('');
   const [amount, setAmount] = useState('');
@@ -44,7 +45,7 @@ export const FinanceTracker: React.FC<FinanceProps> = ({ transactions, setTransa
       notes: notes || undefined
     };
 
-    setTransactions([newTrans, ...transactions]);
+    onAddTransaction(newTrans);
     
     // Reset Form
     setDesc('');
@@ -53,14 +54,10 @@ export const FinanceTracker: React.FC<FinanceProps> = ({ transactions, setTransa
     setLinkedTaskId('');
   };
 
-  const deleteTransaction = (id: string) => {
-    setTransactions(transactions.filter(t => t.id !== id));
-  };
-
   const addCategoryItem = () => {
      const trimmed = newCatInput.trim();
      if(trimmed && !categories.includes(trimmed)) {
-        setCategories([...categories, trimmed]);
+        onUpdateCategories([...categories, trimmed]);
         setNewCatInput('');
         setCategory(trimmed); // Auto-select the new category
      }
@@ -69,7 +66,7 @@ export const FinanceTracker: React.FC<FinanceProps> = ({ transactions, setTransa
   const removeCategoryItem = (cat: string) => {
      if(confirm(`确定删除分类 "${cat}" 吗？这不会影响已有的历史记录。`)) {
         const newCats = categories.filter(c => c !== cat);
-        setCategories(newCats);
+        onUpdateCategories(newCats);
         if(category === cat && newCats.length > 0) setCategory(newCats[0]);
      }
   };
@@ -257,7 +254,7 @@ export const FinanceTracker: React.FC<FinanceProps> = ({ transactions, setTransa
                                 {t.type === 'income' ? '+' : '-'}¥{t.amount.toFixed(2)}
                             </td>
                             <td className="px-6 py-4 text-center">
-                                <button onClick={() => deleteTransaction(t.id)} className="text-slate-600 hover:text-red-400 p-1.5 hover:bg-red-400/10 rounded-full transition-colors">
+                                <button onClick={() => onDeleteTransaction(t.id)} className="text-slate-600 hover:text-red-400 p-1.5 hover:bg-red-400/10 rounded-full transition-colors">
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                 </button>
                             </td>

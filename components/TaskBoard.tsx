@@ -3,10 +3,12 @@ import { VideoTask, TaskPriority, TaskStatusDef } from '../types';
 
 interface TaskBoardProps {
   tasks: VideoTask[];
-  setTasks: (tasks: VideoTask[]) => void;
+  onAddTask: (task: VideoTask) => void;
+  onUpdateTask: (task: VideoTask) => void;
+  onDeleteTask: (id: string) => void;
   currentUser: string;
   statuses: TaskStatusDef[];
-  setStatuses: (s: TaskStatusDef[]) => void;
+  onUpdateStatuses: (s: TaskStatusDef[]) => void;
 }
 
 const PRIORITY_CONFIG = {
@@ -28,7 +30,7 @@ const PRESET_COLORS = [
     { name: 'Gray', class: 'bg-slate-500/10 text-slate-400 border-slate-500/20' },
 ];
 
-export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, setTasks, currentUser, statuses, setStatuses }) => {
+export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onAddTask, onUpdateTask, onDeleteTask, currentUser, statuses, onUpdateStatuses }) => {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newPriority, setNewPriority] = useState<TaskPriority>('Medium');
   const [newTag, setNewTag] = useState('');
@@ -59,7 +61,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, setTasks, currentUs
       tag: newTag.trim() || '普通',
       notes: ''
     };
-    setTasks([...tasks, newTask]);
+    onAddTask(newTask);
     setNewTaskTitle('');
     setNewTag('');
     setNewPriority('Medium');
@@ -69,34 +71,29 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, setTasks, currentUs
     setTimeout(() => setShowSuccess(false), 2000);
   };
 
-  const updateField = (id: string, field: keyof VideoTask, value: any) => {
-    setTasks(tasks.map(t => t.id === id ? { ...t, [field]: value } : t));
+  const updateField = (task: VideoTask, field: keyof VideoTask, value: any) => {
+    onUpdateTask({ ...task, [field]: value });
   };
 
-  const claimTask = (id: string) => {
-    updateField(id, 'assignee', currentUser);
+  const claimTask = (task: VideoTask) => {
+    onUpdateTask({ ...task, assignee: currentUser });
   };
 
-  const unclaimTask = (id: string) => {
-    updateField(id, 'assignee', '');
-  };
-
-  const deleteTask = (id: string) => {
-    setTasks(tasks.filter(t => t.id !== id));
+  const unclaimTask = (task: VideoTask) => {
+    onUpdateTask({ ...task, assignee: '' });
   };
 
   // Status Management Functions
   const addStatus = () => {
       if(!newStatusLabel.trim()) return;
-      // Generate simple ID from label
-      const id = newStatusLabel.trim().replace(/\s+/g, '_'); // Simple ID generation
+      const id = newStatusLabel.trim().replace(/\s+/g, '_');
       
       if(statuses.some(s => s.id === id)) {
           alert('状态名称已存在');
           return;
       }
 
-      setStatuses([...statuses, { id, label: newStatusLabel, color: newStatusColor }]);
+      onUpdateStatuses([...statuses, { id, label: newStatusLabel, color: newStatusColor }]);
       setNewStatusLabel('');
   };
 
@@ -106,18 +103,13 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, setTasks, currentUs
           return;
       }
       if(confirm('确定删除此状态吗？使用此状态的任务将需要重新分配。')) {
-          setStatuses(statuses.filter(s => s.id !== id));
+          onUpdateStatuses(statuses.filter(s => s.id !== id));
       }
   };
 
   const getStatusColor = (statusId: string) => {
       const s = statuses.find(x => x.id === statusId);
       return s ? s.color : 'bg-slate-800 text-slate-400 border-slate-700';
-  };
-
-  const getStatusLabel = (statusId: string) => {
-      const s = statuses.find(x => x.id === statusId);
-      return s ? s.label : statusId;
   };
 
   return (
@@ -173,7 +165,6 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, setTasks, currentUs
             添加
           </button>
 
-          {/* Success Popup */}
           {showSuccess && (
             <div className="absolute top-full right-0 mt-2 bg-green-500 text-white text-xs font-semibold px-3 py-1.5 rounded shadow-lg animate-[popIn_0.3s_ease-out] z-50 flex items-center gap-1">
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
@@ -183,7 +174,6 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, setTasks, currentUs
         </div>
       </div>
 
-      {/* Status Management Panel */}
       {isManagingStatuses && (
           <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 animate-slideUp">
               <h3 className="text-sm font-bold text-white mb-3">自定义任务状态</h3>
@@ -269,7 +259,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, setTasks, currentUs
                     <td className="px-4 py-4">
                        <select
                          value={task.priority}
-                         onChange={(e) => updateField(task.id, 'priority', e.target.value)}
+                         onChange={(e) => updateField(task, 'priority', e.target.value)}
                          className={`appearance-none cursor-pointer px-2 py-1 rounded text-[10px] uppercase font-bold border tracking-wider focus:outline-none focus:ring-1 focus:ring-opacity-50 transition-colors w-full text-center ${PRIORITY_CONFIG[task.priority].color}`}
                        >
                           <option value="High" className="bg-slate-900 text-red-400">High</option>
@@ -280,7 +270,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, setTasks, currentUs
                     <td className="px-4 py-4">
                        <select 
                          value={task.status}
-                         onChange={(e) => updateField(task.id, 'status', e.target.value)}
+                         onChange={(e) => updateField(task, 'status', e.target.value)}
                          className={`w-full appearance-none cursor-pointer pl-3 pr-2 py-1.5 rounded-md text-xs font-semibold border focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-colors ${getStatusColor(task.status)}`}
                        >
                          {statuses.map(s => (
@@ -293,14 +283,14 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, setTasks, currentUs
                           <input 
                             type="text" 
                             value={task.title}
-                            onChange={(e) => updateField(task.id, 'title', e.target.value)}
+                            onChange={(e) => updateField(task, 'title', e.target.value)}
                             className="bg-transparent text-slate-200 font-medium text-base focus:outline-none focus:border-b focus:border-blue-500 w-full"
                           />
                           <div className="flex items-center gap-2">
                              <input 
                                 type="text"
                                 value={task.tag}
-                                onChange={(e) => updateField(task.id, 'tag', e.target.value)}
+                                onChange={(e) => updateField(task, 'tag', e.target.value)}
                                 className="bg-slate-800 text-slate-400 text-xs px-2 py-0.5 rounded border border-slate-700 focus:outline-none focus:border-blue-500 w-24 text-center"
                                 placeholder="标签"
                              />
@@ -327,7 +317,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, setTasks, currentUs
                             </div>
                             {task.assignee === currentUser && (
                                 <button 
-                                  onClick={() => unclaimTask(task.id)}
+                                  onClick={() => unclaimTask(task)}
                                   className="text-xs text-slate-500 hover:text-red-400 opacity-0 group-hover/assignee:opacity-100 transition-opacity"
                                 >
                                   ×
@@ -336,7 +326,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, setTasks, currentUs
                         </div>
                       ) : (
                         <button 
-                          onClick={() => claimTask(task.id)}
+                          onClick={() => claimTask(task)}
                           className="text-xs flex items-center gap-1 border border-dashed border-slate-600 text-slate-500 hover:text-blue-400 hover:border-blue-400 px-3 py-1.5 rounded-full transition-all hover:bg-blue-400/5 whitespace-nowrap"
                         >
                           认领
@@ -347,7 +337,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, setTasks, currentUs
                          <input 
                             type="date" 
                             value={task.startDate}
-                            onChange={(e) => updateField(task.id, 'startDate', e.target.value)}
+                            onChange={(e) => updateField(task, 'startDate', e.target.value)}
                             className="bg-transparent text-slate-400 text-sm focus:outline-none focus:text-white cursor-pointer w-full"
                          />
                     </td>
@@ -355,13 +345,13 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, setTasks, currentUs
                         <input 
                             type="date" 
                             value={task.deadline}
-                            onChange={(e) => updateField(task.id, 'deadline', e.target.value)}
+                            onChange={(e) => updateField(task, 'deadline', e.target.value)}
                             className="bg-transparent text-slate-400 text-sm focus:outline-none focus:text-white cursor-pointer w-full"
                          />
                     </td>
                     <td className="px-4 py-4 text-center">
                       <button 
-                        onClick={() => deleteTask(task.id)}
+                        onClick={() => onDeleteTask(task.id)}
                         className="text-slate-600 hover:text-red-400 p-2 rounded-full hover:bg-red-400/10 transition-colors"
                         title="删除任务"
                       >
@@ -381,7 +371,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, setTasks, currentUs
                                     className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-slate-200 text-sm focus:outline-none focus:border-blue-500/50 min-h-[120px] placeholder-slate-600"
                                     placeholder="添加拍摄注意事项、脚本链接或具体需求..."
                                     value={task.notes || ''}
-                                    onChange={(e) => updateField(task.id, 'notes', e.target.value)}
+                                    onChange={(e) => updateField(task, 'notes', e.target.value)}
                                     autoFocus
                                 />
                             </div>

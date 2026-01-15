@@ -3,10 +3,11 @@ import { AssetItem } from '../types';
 
 interface AssetGalleryProps {
   assets: AssetItem[];
-  setAssets: (a: AssetItem[]) => void;
+  onAddAsset: (asset: AssetItem) => void;
+  onDeleteAsset: (id: string) => void;
 }
 
-export const AssetGallery: React.FC<AssetGalleryProps> = ({ assets, setAssets }) => {
+export const AssetGallery: React.FC<AssetGalleryProps> = ({ assets, onAddAsset, onDeleteAsset }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -25,17 +26,13 @@ export const AssetGallery: React.FC<AssetGalleryProps> = ({ assets, setAssets })
           dataUrl: event.target.result as string,
           type: 'image'
         };
-        setAssets([newAsset, ...assets]);
+        onAddAsset(newAsset);
       }
     };
     reader.readAsDataURL(file);
     
     // Reset input
     if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const deleteAsset = (id: string) => {
-    setAssets(assets.filter(a => a.id !== id));
   };
 
   return (
@@ -68,7 +65,7 @@ export const AssetGallery: React.FC<AssetGalleryProps> = ({ assets, setAssets })
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
                     <p className="text-white text-sm font-medium truncate mb-1">{asset.name}</p>
                     <button 
-                        onClick={() => deleteAsset(asset.id)}
+                        onClick={() => onDeleteAsset(asset.id)}
                         className="text-xs text-red-300 hover:text-red-100 text-left"
                     >
                         移除

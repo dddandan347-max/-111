@@ -5,24 +5,7 @@ import { FinanceTracker } from './components/FinanceTracker';
 import { PromptLibrary } from './components/PromptLibrary';
 import { AssetGallery } from './components/AssetGallery';
 import { ViewState, VideoTask, Transaction, ScriptPrompt, AssetItem, TaskStatusDef, User } from './types';
-
-// Helper for local storage
-function useStickyState<T>(defaultValue: T, key: string): [T, (value: T) => void] {
-  const [value, setValue] = useState<T>(() => {
-    try {
-        const stickyValue = window.localStorage.getItem(key);
-        return stickyValue !== null ? JSON.parse(stickyValue) : defaultValue;
-    } catch (e) {
-        return defaultValue;
-    }
-  });
-
-  useEffect(() => {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  }, [key, value]);
-
-  return [value, setValue];
-}
+import { supabase } from './services/supabase';
 
 const ADMIN_PASSWORD = 'Qq1640668066';
 
@@ -40,10 +23,18 @@ const DEFAULT_STATUSES: TaskStatusDef[] = [
 
 export default function App() {
   const [currentView, setCurrentView] = useState<ViewState>('tasks');
-  const [currentUser, setCurrentUser] = useStickyState<string>('', 'studio_current_user');
+  const [currentUser, setCurrentUser] = useState<string>('');
   
-  // Auth State
-  const [users, setUsers] = useStickyState<User[]>([], 'studio_users');
+  // Data States
+  const [users, setUsers] = useState<User[]>([]);
+  const [tasks, setTasks] = useState<VideoTask[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [prompts, setPrompts] = useState<ScriptPrompt[]>([]);
+  const [assets, setAssets] = useState<AssetItem[]>([]);
+  const [financeCategories, setFinanceCategories] = useState<string[]>(DEFAULT_CATEGORIES);
+  const [taskStatuses, setTaskStatuses] = useState<TaskStatusDef[]>(DEFAULT_STATUSES);
+
+  // Auth UI State
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [authUsername, setAuthUsername] = useState('');
   const [authPassword, setAuthPassword] = useState('');
@@ -55,33 +46,187 @@ export default function App() {
   const [adminAuthInput, setAdminAuthInput] = useState('');
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
 
-  // Application Data States (Persisted)
-  const [tasks, setTasks] = useStickyState<VideoTask[]>([
-      { 
-        id: '1', 
-        title: '产品发布预告片', 
-        status: 'Scripting', 
-        assignee: '', 
-        deadline: '2023-12-01', 
-        startDate: '2023-11-20',
-        priority: 'High',
-        tag: '宣传片',
-        notes: '初步构思：展示产品核心功能，风格要科技感强。' 
-      }
-  ], 'studio_tasks');
-  
-  const [transactions, setTransactions] = useStickyState<Transaction[]>([], 'studio_finance');
-  const [prompts, setPrompts] = useStickyState<ScriptPrompt[]>([], 'studio_prompts');
-  const [assets, setAssets] = useStickyState<AssetItem[]>([], 'studio_assets');
-  const [financeCategories, setFinanceCategories] = useStickyState<string[]>(DEFAULT_CATEGORIES, 'studio_finance_categories');
-  const [taskStatuses, setTaskStatuses] = useStickyState<TaskStatusDef[]>(DEFAULT_STATUSES, 'studio_task_statuses');
+  // Initial Data Fetching
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-  // Auth Handlers
+  const fetchData = async () => {
+    try {
+        const [
+            usersRes,
+            tasksRes,
+            transRes,
+            promptsRes,
+            assetsRes,
+            settingsRes
+        ] = await Promise.all([
+            supabase.from('app_users').select('*'),
+            supabase.from('tasks').select('*'),
+            supabase.from('transactions').select('*').order('date', { ascending: false }),
+            supabase.from('prompts').select('*').order('created_at', { ascending: false }),
+            supabase.from('assets').select('*'),
+            supabase.from('app_settings').select('*')
+        ]);
+
+        if (usersRes.data) setUsers(usersRes.data);
+        if (tasksRes.data) setTasks(tasksRes.data.map(t => ({
+            ...t,
+            startDate: t.start_date, // Map snake_case to camelCase
+        })));
+        if (transRes.data) setTransactions(transRes.data.map(t => ({
+            ...t,
+            linkedTaskId: t.linked_task_id
+        })));
+        if (promptsRes.data) setPrompts(promptsRes.data.map(p => ({
+            ...p,
+            createdAt: p.created_at
+        })));
+        if (assetsRes.data) setAssets(assetsRes.data.map(a => ({
+            ...a,
+            dataUrl: a.data_url
+        })));
+
+        // Handle settings
+        if (settingsRes.data) {
+            const catSetting = settingsRes.data.find(s => s.key === 'finance_categories');
+            if (catSetting) setFinanceCategories(catSetting.value);
+
+            const statusSetting = settingsRes.data.find(s => s.key === 'task_statuses');
+            if (statusSetting) setTaskStatuses(statusSetting.value);
+        }
+    } catch (error) {
+        console.error('Error fetching data:', error);
+    }
+  };
+
+  // --- Handlers for TaskBoard ---
+  const handleAddTask = async (newTask: VideoTask) => {
+      // Optimistic update
+      setTasks([...tasks, newTask]);
+      
+      const { error } = await supabase.from('tasks').insert({
+          id: newTask.id,
+          title: newTask.title,
+          assignee: newTask.assignee,
+          status: newTask.status,
+          deadline: newTask.deadline,
+          start_date: newTask.startDate,
+          priority: newTask.priority,
+          tag: newTask.tag,
+          notes: newTask.notes
+      });
+      if (error) console.error('Error adding task:', error);
+  };
+
+  const handleUpdateTask = async (updatedTask: VideoTask) => {
+      setTasks(tasks.map(t => t.id === updatedTask.id ? updatedTask : t));
+      
+      const { error } = await supabase.from('tasks').update({
+          title: updatedTask.title,
+          assignee: updatedTask.assignee,
+          status: updatedTask.status,
+          deadline: updatedTask.deadline,
+          start_date: updatedTask.startDate,
+          priority: updatedTask.priority,
+          tag: updatedTask.tag,
+          notes: updatedTask.notes
+      }).eq('id', updatedTask.id);
+      
+      if (error) console.error('Error updating task:', error);
+  };
+
+  const handleDeleteTask = async (id: string) => {
+      setTasks(tasks.filter(t => t.id !== id));
+      const { error } = await supabase.from('tasks').delete().eq('id', id);
+      if (error) console.error('Error deleting task:', error);
+  };
+
+  const handleUpdateStatuses = async (newStatuses: TaskStatusDef[]) => {
+      setTaskStatuses(newStatuses);
+      // Upsert into app_settings
+      const { error } = await supabase.from('app_settings').upsert({
+          key: 'task_statuses',
+          value: newStatuses
+      });
+      if (error) console.error('Error updating statuses:', error);
+  };
+
+  // --- Handlers for FinanceTracker ---
+  const handleAddTransaction = async (newTrans: Transaction) => {
+      setTransactions([newTrans, ...transactions]);
+      const { error } = await supabase.from('transactions').insert({
+          id: newTrans.id,
+          description: newTrans.description,
+          amount: newTrans.amount,
+          type: newTrans.type,
+          date: newTrans.date,
+          category: newTrans.category,
+          linked_task_id: newTrans.linkedTaskId,
+          notes: newTrans.notes
+      });
+      if (error) console.error('Error adding transaction:', error);
+  };
+
+  const handleDeleteTransaction = async (id: string) => {
+      setTransactions(transactions.filter(t => t.id !== id));
+      const { error } = await supabase.from('transactions').delete().eq('id', id);
+      if (error) console.error('Error deleting transaction:', error);
+  };
+
+  const handleUpdateCategories = async (newCats: string[]) => {
+      setFinanceCategories(newCats);
+      const { error } = await supabase.from('app_settings').upsert({
+          key: 'finance_categories',
+          value: newCats
+      });
+      if (error) console.error('Error updating categories:', error);
+  };
+
+  // --- Handlers for PromptLibrary ---
+  const handleAddPrompt = async (newPrompt: ScriptPrompt) => {
+      setPrompts([newPrompt, ...prompts]);
+      const { error } = await supabase.from('prompts').insert({
+          id: newPrompt.id,
+          title: newPrompt.title,
+          content: newPrompt.content,
+          tags: newPrompt.tags,
+          created_at: newPrompt.createdAt
+      });
+      if (error) console.error('Error adding prompt:', error);
+  };
+
+  const handleDeletePrompt = async (id: string) => {
+      setPrompts(prompts.filter(p => p.id !== id));
+      const { error } = await supabase.from('prompts').delete().eq('id', id);
+      if (error) console.error('Error deleting prompt:', error);
+  };
+
+  // --- Handlers for AssetGallery ---
+  const handleAddAsset = async (newAsset: AssetItem) => {
+      setAssets([newAsset, ...assets]);
+      const { error } = await supabase.from('assets').insert({
+          id: newAsset.id,
+          name: newAsset.name,
+          data_url: newAsset.dataUrl,
+          type: newAsset.type
+      });
+      if (error) console.error('Error adding asset:', error);
+  };
+
+  const handleDeleteAsset = async (id: string) => {
+      setAssets(assets.filter(a => a.id !== id));
+      const { error } = await supabase.from('assets').delete().eq('id', id);
+      if (error) console.error('Error deleting asset:', error);
+  };
+
+  // --- Handlers for Auth ---
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
     setAuthSuccess('');
 
+    // In a real app we would query the DB here, but we already fetched users
     const user = users.find(u => u.username === authUsername);
     
     if (!user) {
@@ -102,7 +247,7 @@ export default function App() {
     setCurrentUser(user.username);
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
     setAuthSuccess('');
@@ -128,10 +273,20 @@ export default function App() {
         isApproved: false
     };
 
+    // Update local state
     setUsers([...users, newUser]);
-    setAuthSuccess('注册成功！请等待管理员审核您的账号。');
-    setAuthMode('login');
-    setAuthPassword(''); // Keep username for convenience
+    
+    // Update DB
+    const { error } = await supabase.from('app_users').insert(newUser);
+
+    if (error) {
+        setAuthError('注册失败，请稍后重试');
+        console.error(error);
+    } else {
+        setAuthSuccess('注册成功！请等待管理员审核您的账号。');
+        setAuthMode('login');
+        setAuthPassword('');
+    }
   };
 
   const handleAdminLogin = () => {
@@ -143,13 +298,15 @@ export default function App() {
       }
   };
 
-  const approveUser = (username: string) => {
+  const approveUser = async (username: string) => {
       setUsers(users.map(u => u.username === username ? { ...u, isApproved: true } : u));
+      await supabase.from('app_users').update({ is_approved: true }).eq('username', username);
   };
 
-  const deleteUser = (username: string) => {
+  const deleteUser = async (username: string) => {
       if (confirm(`确定要删除用户 "${username}" 吗?`)) {
           setUsers(users.filter(u => u.username !== username));
+          await supabase.from('app_users').delete().eq('username', username);
       }
   };
 
@@ -158,23 +315,34 @@ export default function App() {
       case 'tasks':
         return <TaskBoard 
             tasks={tasks} 
-            setTasks={setTasks} 
+            onAddTask={handleAddTask}
+            onUpdateTask={handleUpdateTask}
+            onDeleteTask={handleDeleteTask}
             currentUser={currentUser} 
             statuses={taskStatuses}
-            setStatuses={setTaskStatuses}
+            onUpdateStatuses={handleUpdateStatuses}
         />;
       case 'finance':
         return <FinanceTracker 
             transactions={transactions} 
-            setTransactions={setTransactions} 
+            onAddTransaction={handleAddTransaction}
+            onDeleteTransaction={handleDeleteTransaction}
             tasks={tasks} 
             categories={financeCategories}
-            setCategories={setFinanceCategories}
+            onUpdateCategories={handleUpdateCategories}
         />;
       case 'prompts':
-        return <PromptLibrary prompts={prompts} setPrompts={setPrompts} />;
+        return <PromptLibrary 
+            prompts={prompts} 
+            onAddPrompt={handleAddPrompt}
+            onDeletePrompt={handleDeletePrompt}
+        />;
       case 'assets':
-        return <AssetGallery assets={assets} setAssets={setAssets} />;
+        return <AssetGallery 
+            assets={assets} 
+            onAddAsset={handleAddAsset}
+            onDeleteAsset={handleDeleteAsset}
+        />;
       default:
         return <div className="text-white">请选择一个视图</div>;
     }

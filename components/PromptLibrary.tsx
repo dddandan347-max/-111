@@ -4,10 +4,11 @@ import { generateScriptIdea } from '../services/geminiService';
 
 interface PromptLibraryProps {
   prompts: ScriptPrompt[];
-  setPrompts: (p: ScriptPrompt[]) => void;
+  onAddPrompt: (p: ScriptPrompt) => void;
+  onDeletePrompt: (id: string) => void;
 }
 
-export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, setPrompts }) => {
+export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddPrompt, onDeletePrompt }) => {
   const [topic, setTopic] = useState('');
   const [style, setStyle] = useState('电影感 & 情感向');
   const [isLoading, setIsLoading] = useState(false);
@@ -37,9 +38,13 @@ export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, setPrompt
     };
 
     if (activePromptId) {
-      setPrompts(prompts.map(p => p.id === activePromptId ? newPrompt : p));
+       // Edit logic not fully implemented in parent yet, assuming Add for now or handle deletion then add
+       // For simplicity in this migration, we'll treat it as a new prompt if ID exists (or user should delete old one)
+       // But to be cleaner:
+       onDeletePrompt(activePromptId);
+       onAddPrompt(newPrompt);
     } else {
-      setPrompts([newPrompt, ...prompts]);
+      onAddPrompt(newPrompt);
     }
     
     // Reset view
@@ -59,7 +64,7 @@ export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, setPrompt
 
   const deletePrompt = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setPrompts(prompts.filter(p => p.id !== id));
+    onDeletePrompt(id);
     if (activePromptId === id) {
         setIsEditing(false);
         setTopic('');
