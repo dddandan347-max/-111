@@ -25,13 +25,12 @@
                 '100%': { transform: 'scale(1)', opacity: '1' },
               },
               shimmer: {
-                '0%': { backgroundPosition: '-200% 0' },
-                '100%': { backgroundPosition: '200% 0' },
+                '100%': { transform: 'translateX(100%)' },
               }
             },
             animation: {
               popIn: 'popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
-              shimmer: 'shimmer 2s infinite linear',
+              shimmer: 'shimmer 2s infinite',
             }
           }
         }
@@ -39,21 +38,14 @@
     </script>
     <style>
       body {
-        background: bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950;
-        background-attachment: fixed;
+        background: radial-gradient(circle at top left, #0f172a, #020617);
         color: #f8fafc;
         min-height: 100vh;
       }
       .glass {
-        background: rgba(15, 23, 42, 0.75);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-      }
-      .skeleton {
-        background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
-        background-size: 200% 100%;
-        animation: shimmer 2s infinite linear;
+        background: rgba(15, 23, 42, 0.7);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
       }
       ::-webkit-scrollbar { width: 6px; height: 6px; }
       ::-webkit-scrollbar-track { background: transparent; }
@@ -63,9 +55,9 @@
   <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@18.2.0",
-    "react-dom/": "https://esm.sh/react-dom@18.2.0/",
-    "react/": "https://esm.sh/react@18.2.0/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
     "recharts": "https://esm.sh/recharts@^3.6.0",
     "lucide-react": "https://esm.sh/lucide-react@0.344.0",
     "@google/genai": "https://esm.sh/@google/genai@^1.35.0",

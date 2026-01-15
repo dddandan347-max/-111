@@ -82,11 +82,7 @@ export default function App() {
             })));
         }
         if (tasksRes.data) setTasks(tasksRes.data.map(t => ({ ...t, startDate: t.start_date })));
-        if (transRes.data) setTransactions(transRes.data.map(t => ({ 
-          ...t, 
-          linkedTaskId: t.linked_task_id,
-          attachmentUrl: t.attachment_url // Ensure attachment_url column is selected
-        })));
+        if (transRes.data) setTransactions(transRes.data.map(t => ({ ...t, linkedTaskId: t.linked_task_id })));
         if (promptsRes.data) setPrompts(promptsRes.data.map(p => ({ ...p, createdAt: p.created_at })));
         if (assetsRes.data) setAssets(assetsRes.data.map(a => ({ ...a, dataUrl: a.data_url })));
         if (docsRes.data) setDocs(docsRes.data.map(d => ({ 
@@ -132,6 +128,7 @@ export default function App() {
       if (!error) fetchData();
   };
 
+  // ... (Other handlers like handleLogin, handleRegister, handleAdminLogin remain same) ...
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
@@ -181,7 +178,7 @@ export default function App() {
       case 'tasks':
         return <TaskBoard tasks={tasks} onAddTask={async(t)=>{await supabase.from('tasks').insert({id:t.id, title:t.title, assignee:t.assignee, status:t.status, deadline:t.deadline, start_date:t.startDate, priority:t.priority, tag:t.tag, notes:t.notes}); fetchData();}} onUpdateTask={async(t)=>{await supabase.from('tasks').update({title:t.title, status:t.status, assignee:t.assignee, deadline:t.deadline, start_date:t.startDate, priority:t.priority, tag:t.tag, notes:t.notes}).eq('id', t.id); fetchData();}} onDeleteTask={async(id)=>{await supabase.from('tasks').delete().eq('id', id); fetchData();}} currentUser={currentUser} statuses={taskStatuses} onUpdateStatuses={(s) => setTaskStatuses(s)} />;
       case 'finance':
-        return <FinanceTracker transactions={transactions} onAddTransaction={async(t)=>{await supabase.from('transactions').insert({id:t.id, description:t.description, amount:t.amount, type:t.type, date:t.date, category:t.category, linked_task_id:t.linkedTaskId, attachment_url:t.attachmentUrl, notes:t.notes}); fetchData();}} onDeleteTransaction={async(id)=>{await supabase.from('transactions').delete().eq('id', id); fetchData();}} tasks={tasks} categories={financeCategories} onUpdateCategories={(c) => setFinanceCategories(c)} />;
+        return <FinanceTracker transactions={transactions} onAddTransaction={async(t)=>{await supabase.from('transactions').insert({id:t.id, description:t.description, amount:t.amount, type:t.type, date:t.date, category:t.category, linked_task_id:t.linkedTaskId, notes:t.notes}); fetchData();}} onDeleteTransaction={async(id)=>{await supabase.from('transactions').delete().eq('id', id); fetchData();}} tasks={tasks} categories={financeCategories} onUpdateCategories={(c) => setFinanceCategories(c)} />;
       case 'prompts':
         return <PromptLibrary prompts={prompts} onAddPrompt={handleAddPrompt} onDeletePrompt={(id) => { supabase.from('prompts').delete().eq('id', id).then(()=>fetchData()) }} />;
       case 'documents':
@@ -192,6 +189,7 @@ export default function App() {
     }
   };
 
+  // ... (renderAdminPanel, auth checks etc remain same as before) ...
   const renderAdminPanel = () => (
       <div className="bg-slate-900 p-8 rounded-2xl border border-slate-800 shadow-2xl max-w-2xl w-full relative z-10 pointer-events-auto max-h-[90vh] overflow-y-auto">
           <div className="flex justify-between items-center mb-6">

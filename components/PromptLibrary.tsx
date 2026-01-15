@@ -52,10 +52,10 @@ export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddProm
         return `<span class="px-1 rounded border ${classes}" data-color="${color}">${inner}</span>`;
       })
       .replace(/\{media-img\}(.*?)\{\/media\}/g, (_, url) => {
-        return `<div class="my-4 max-w-full md:max-w-md group relative inline-block animate-popIn"><img src="${url}" data-media-type="img" class="rounded-xl border border-slate-700 shadow-lg" /><div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-600 text-white text-[10px] px-2 py-1 rounded cursor-pointer" onclick="this.parentElement.remove()">删除</div></div>`;
+        return `<div class="my-4 max-w-full md:max-w-md group relative inline-block"><img src="${url}" data-media-type="img" class="rounded-xl border border-slate-700 shadow-lg" /><div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-600 text-white text-[10px] px-2 py-1 rounded cursor-pointer" onclick="this.parentElement.remove()">删除</div></div>`;
       })
       .replace(/\{media-video\}(.*?)\{\/media\}/g, (_, url) => {
-        return `<div class="my-4 max-w-full md:max-w-md group relative animate-popIn"><video src="${url}" controls data-media-type="video" class="rounded-xl border border-slate-700 shadow-lg w-full"></video><div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-600 text-white text-[10px] px-2 py-1 rounded cursor-pointer" onclick="this.parentElement.remove()">删除</div></div>`;
+        return `<div class="my-4 max-w-full md:max-w-md group relative"><video src="${url}" controls data-media-type="video" class="rounded-xl border border-slate-700 shadow-lg w-full"></video><div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-600 text-white text-[10px] px-2 py-1 rounded cursor-pointer" onclick="this.parentElement.remove()">删除</div></div>`;
       })
       .replace(/\n/g, '<br>');
   };
@@ -97,16 +97,19 @@ export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddProm
     const filePath = `scripts/${fileName}`;
 
     try {
+      // 1. 上传到 Supabase Storage
       const { data, error } = await supabase.storage
         .from('studiosync_assets')
         .upload(filePath, file);
 
       if (error) throw error;
 
+      // 2. 获取公共 URL
       const { data: { publicUrl } } = supabase.storage
         .from('studiosync_assets')
         .getPublicUrl(filePath);
 
+      // 3. 插入编辑器
       if (file.type.startsWith('image/')) {
         insertMedia('img', publicUrl);
       } else if (file.type.startsWith('video/')) {
@@ -158,91 +161,83 @@ export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddProm
     try {
       await onAddPrompt(promptData);
       setActivePromptId(promptData.id);
-      alert("剧本已保存成功");
+      alert("剧本已保存，媒体素材已链接至云端。");
     } catch (err) {
-      alert("保存失败。");
+      alert("数据库保存失败。");
     }
   };
 
   return (
     <div className="h-full flex flex-col md:flex-row gap-6 animate-fadeIn relative">
-      {(isUploading || isLoading) && (
-        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center">
-            <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-blue-500/20 flex flex-col items-center gap-6 animate-popIn shadow-2xl">
-                <div className="relative">
-                  <div className="w-16 h-16 border-4 border-blue-500/10 rounded-full"></div>
-                  <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
-                </div>
-                <div className="text-center">
-                  <p className="text-white font-black text-xl tracking-tighter">{isUploading ? '正在同步素材...' : 'Gemini 正在构思...'}</p>
-                  <p className="text-slate-500 text-xs mt-2 uppercase tracking-widest font-bold">Please stand by</p>
-                </div>
+      {isUploading && (
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center">
+            <div className="bg-slate-900 p-8 rounded-2xl border border-blue-500/30 flex flex-col items-center gap-4 animate-popIn">
+                <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-white font-bold tracking-widest">正在上传超大素材至云端...</p>
+                <p className="text-slate-500 text-xs">这取决于你的网络速度</p>
             </div>
         </div>
       )}
 
-      <div className="w-full md:w-72 shrink-0 flex flex-col gap-4">
-        <div className="flex items-center justify-between px-2">
-            <h2 className="text-xs font-black text-slate-500 uppercase tracking-widest">脚本中心</h2>
-            <button onClick={() => setActivePromptId(null)} className="p-2 glass text-blue-400 hover:text-white rounded-xl transition-all border border-slate-800">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+      <div className="w-full md:w-64 shrink-0 flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-white">脚本仓库</h2>
+            <button onClick={() => setActivePromptId(null)} className="p-2 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg transition-all">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
             </button>
         </div>
-        <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar max-h-[70vh]">
+        <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar max-h-[70vh]">
             {prompts.map(p => (
-                <div key={p.id} onClick={() => setActivePromptId(p.id)} className={`p-4 rounded-2xl border cursor-pointer transition-all duration-300 ${activePromptId === p.id ? 'bg-blue-600/10 border-blue-500/50 shadow-lg shadow-blue-500/5' : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'}`}>
+                <div key={p.id} onClick={() => setActivePromptId(p.id)} className={`p-3 rounded-xl border cursor-pointer transition-all ${activePromptId === p.id ? 'bg-blue-600/10 border-blue-500' : 'bg-slate-900 border-slate-800 hover:border-slate-700'}`}>
                     <h3 className="text-sm font-bold text-slate-200 truncate">{p.title}</h3>
-                    <div className="flex justify-between items-center mt-3 text-[9px] text-slate-500 font-bold uppercase tracking-wider">
+                    <div className="flex justify-between items-center mt-2 text-[10px] text-slate-500">
                       <span>{new Date(p.createdAt).toLocaleDateString()}</span>
-                      <button onClick={(e) => { e.stopPropagation(); onDeletePrompt(p.id); }} className="hover:text-red-500 transition-colors">REMOVE</button>
+                      <button onClick={(e) => { e.stopPropagation(); onDeletePrompt(p.id); }} className="hover:text-red-400">删除</button>
                     </div>
                 </div>
             ))}
         </div>
       </div>
 
-      <div className="flex-1 glass rounded-[2.5rem] border border-slate-800/50 flex flex-col overflow-hidden shadow-2xl relative min-h-[600px] animate-popIn">
-        <div className="bg-slate-900/40 backdrop-blur-md border-b border-slate-800/50 px-6 py-4 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-20">
-            <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 shadow-inner">
+      <div className="flex-1 bg-slate-900 rounded-2xl border border-slate-800 flex flex-col overflow-hidden shadow-2xl relative min-h-[600px]">
+        <div className="bg-slate-800/80 backdrop-blur-md border-b border-slate-700 px-4 py-2 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-20">
+            <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 bg-slate-900/50 p-1 rounded-lg border border-slate-700">
                     {Object.entries(HIGHLIGHT_COLORS).map(([color, classes]) => (
-                        <button key={color} onClick={() => applyColor(color)} className={`w-6 h-6 rounded-lg transition-transform hover:scale-125 ${classes.split(' ')[0]}`} />
+                        <button key={color} onClick={() => applyColor(color)} className={`w-6 h-6 rounded flex items-center justify-center transition-transform hover:scale-110 ${classes.split(' ')[0]}`} />
                     ))}
                 </div>
-                <div className="h-6 w-[1px] bg-slate-800 mx-1" />
-                <button onClick={() => mediaInputRef.current?.click()} className="p-2 text-slate-500 hover:text-blue-400 transition-colors" title="插入云端素材">
+                <div className="h-6 w-[1px] bg-slate-700 mx-1" />
+                <button onClick={() => mediaInputRef.current?.click()} className="p-1.5 text-slate-400 hover:text-blue-400" title="上传云端素材">
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
                 </button>
                 <input type="file" ref={mediaInputRef} className="hidden" accept="image/*,video/*" onChange={handleFileUpload} />
             </div>
             
-            <div className="flex items-center gap-3">
-                <button onClick={handleGenerate} disabled={isLoading} className="bg-purple-600/10 text-purple-400 border border-purple-500/20 hover:bg-purple-600/20 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
-                    Gemini 构思
+            <div className="flex items-center gap-2">
+                <button onClick={handleGenerate} disabled={isLoading} className="bg-purple-600/20 text-purple-400 border border-purple-500/30 px-3 py-1.5 rounded-lg text-xs font-bold transition-all">
+                    {isLoading ? '正在创作...' : 'Gemini 生成'}
                 </button>
-                <button onClick={savePrompt} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-900/40 transition-all active:scale-95">
+                <button onClick={savePrompt} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-lg transition-all">
                   保存剧本
                 </button>
             </div>
         </div>
 
-        <div className="flex-1 p-8 md:p-16 overflow-y-auto custom-scrollbar bg-gradient-to-b from-transparent to-slate-950/20">
+        <div className="flex-1 p-6 md:p-12 overflow-y-auto custom-scrollbar">
             <input 
                 type="text" 
                 placeholder="在此输入剧本标题..."
-                className="w-full bg-transparent text-4xl font-black text-white mb-8 focus:outline-none placeholder:text-slate-800 tracking-tighter"
+                className="w-full bg-transparent text-3xl font-bold text-white mb-6 focus:outline-none placeholder:text-slate-800"
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
             />
             <div 
                 ref={editorRef}
                 contentEditable
-                className="w-full min-h-[500px] bg-transparent text-slate-300 text-lg leading-relaxed focus:outline-none font-serif whitespace-pre-wrap outline-none pb-40 relative group"
-                placeholder="点击云端图标上传视频，或直接在此处开始写作..."
+                className="w-full min-h-[500px] bg-transparent text-slate-300 text-lg leading-loose focus:outline-none font-serif whitespace-pre-wrap outline-none pb-20"
+                placeholder="点击云端图标上传超大视频..."
             />
-            <div className="pointer-events-none opacity-20 text-[10px] font-black uppercase tracking-[0.3em] text-slate-600 mt-20 text-center">
-                STUDIO SYNC EDITOR ENGINE v2.0
-            </div>
         </div>
       </div>
     </div>
