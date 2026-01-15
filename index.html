@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -7,6 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             colors: {
@@ -15,21 +17,37 @@
                 800: '#1e293b',
                 700: '#334155',
                 accent: '#3b82f6',
+              },
+              mochi: {
+                bg: '#FFFDF5', // 奶油暖白
+                card: '#FFFFFF',
+                pink: '#FFD1DC', // 樱花粉
+                mint: '#E0F7F4', // 薄荷绿
+                yellow: '#FFF4BD', // 奶酪黄
+                blue: '#D0E1FF', // 浅空蓝
+                text: '#5C524F', // 咖啡暖灰
+                border: '#F2E8DF' // 麦片色边框
               }
+            },
+            boxShadow: {
+              'mochi': '0 10px 40px -10px rgba(180, 160, 140, 0.15)',
+              'mochi-sm': '0 4px 15px -3px rgba(180, 160, 140, 0.1)',
             },
             keyframes: {
               popIn: {
-                '0%': { transform: 'scale(0.9)', opacity: '0' },
+                '0%': { transform: 'scale(0.95)', opacity: '0' },
                 '100%': { transform: 'scale(1)', opacity: '1' },
               },
-              slideUp: {
-                '0%': { transform: 'translateY(10px)', opacity: '0' },
-                '100%': { transform: 'translateY(0)', opacity: '1' },
+              jelly: {
+                '0%, 100%': { transform: 'scale(1, 1)' },
+                '25%': { transform: 'scale(0.95, 1.05)' },
+                '50%': { transform: 'scale(1.05, 0.95)' },
+                '75%': { transform: 'scale(0.98, 1.02)' },
               }
             },
             animation: {
-              popIn: 'popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
-              slideUp: 'slideUp 0.3s ease-out forwards',
+              popIn: 'popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2) forwards',
+              jelly: 'jelly 0.5s ease-in-out',
             }
           }
         }
@@ -37,24 +55,32 @@
     </script>
     <style>
       body {
+        transition: background-color 0.4s ease, color 0.4s ease;
+        font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      }
+      .dark body {
         background-color: #0f172a;
         color: #f8fafc;
       }
-      /* Custom scrollbar for webkit */
+      .light body {
+        background-color: #FFFDF5;
+        background-image: radial-gradient(#F2E8DF 0.5px, transparent 0.5px);
+        background-size: 20px 20px;
+        color: #5C524F;
+      }
+      .mochi-glass {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(10px);
+      }
+      /* Custom scrollbar */
       ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
+        width: 6px;
+        height: 6px;
       }
-      ::-webkit-scrollbar-track {
-        background: #1e293b; 
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #475569; 
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #64748b; 
-      }
+      .dark ::-webkit-scrollbar-track { background: #1e293b; }
+      .dark ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+      .light ::-webkit-scrollbar-track { background: #F7F1EA; }
+      .light ::-webkit-scrollbar-thumb { background: #EBD9C8; border-radius: 10px; }
     </style>
   <script type="importmap">
 {

@@ -1,13 +1,13 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { ScriptPrompt } from '../types';
-import { generateScriptIdea } from '../services/geminiService';
 import { supabase } from '../services/supabase';
 
 interface PromptLibraryProps {
   prompts: ScriptPrompt[];
   onAddPrompt: (p: ScriptPrompt) => void;
   onDeletePrompt: (id: string) => void;
+  currentUser: string;
 }
 
 const HIGHLIGHT_COLORS: Record<string, string> = {
@@ -21,13 +21,30 @@ const HIGHLIGHT_COLORS: Record<string, string> = {
   pink: 'bg-pink-500/30 text-pink-100 border-pink-500/50',
 };
 
-export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddPrompt, onDeletePrompt }) => {
+// 浅色模式下的高亮颜色
+const LIGHT_HIGHLIGHT_COLORS: Record<string, string> = {
+  red: 'bg-rose-100 text-rose-700 border-rose-200',
+  orange: 'bg-orange-100 text-orange-700 border-orange-200',
+  yellow: 'bg-amber-100 text-amber-700 border-amber-200',
+  green: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  blue: 'bg-sky-100 text-sky-700 border-sky-200',
+  indigo: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+  purple: 'bg-purple-100 text-purple-700 border-purple-200',
+  pink: 'bg-pink-100 text-pink-700 border-pink-200',
+};
+
+export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddPrompt, onDeletePrompt, currentUser }) => {
   const [topic, setTopic] = useState('');
   const [style, setStyle] = useState('电影感 & 情感向');
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [activePromptId, setActivePromptId] = useState<string | null>(null);
+  const theme = document.documentElement.className.includes('light') ? 'light' : 'dark';
   
+  const [slashMenu, setSlashMenu] = useState<{ visible: boolean; x: number; y: number; index: number }>({
+    visible: false, x: 0, y: 0, index: 0
+  });
+
   const editorRef = useRef<HTMLDivElement>(null);
   const mediaInputRef = useRef<HTMLInputElement>(null);
 
@@ -42,20 +59,21 @@ export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddProm
       editorRef.current.innerHTML = '';
       setTopic('');
     }
-  }, [activePromptId, prompts]);
+  }, [activePromptId, prompts, theme]);
 
   const parseHighlightsToHtml = (text: string) => {
     if (!text) return '';
+    const colors = theme === 'dark' ? HIGHLIGHT_COLORS : LIGHT_HIGHLIGHT_COLORS;
     return text
       .replace(/\{hl-(\w+)\}(.*?)\{\/hl\}/g, (_, color, inner) => {
-        const classes = HIGHLIGHT_COLORS[color] || HIGHLIGHT_COLORS.yellow;
+        const classes = colors[color] || colors.yellow;
         return `<span class="px-1 rounded border ${classes}" data-color="${color}">${inner}</span>`;
       })
       .replace(/\{media-img\}(.*?)\{\/media\}/g, (_, url) => {
-        return `<div class="my-4 max-w-full md:max-w-md group relative inline-block"><img src="${url}" data-media-type="img" class="rounded-xl border border-slate-700 shadow-lg" /><div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-600 text-white text-[10px] px-2 py-1 rounded cursor-pointer" onclick="this.parentElement.remove()">删除</div></div>`;
+        return `<div class="my-4 max-w-full md:max-w-md group relative inline-block animate-popIn"><img src="${url}" data-media-type="img" class="rounded-2xl border ${theme === 'dark' ? 'border-slate-700 shadow-xl' : 'border-mochi-border shadow-mochi'}" /><div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-rose-500 text-white text-[10px] px-3 py-1.5 rounded-xl font-black cursor-pointer shadow-lg" onclick="this.parentElement.remove()">删除</div></div>`;
       })
       .replace(/\{media-video\}(.*?)\{\/media\}/g, (_, url) => {
-        return `<div class="my-4 max-w-full md:max-w-md group relative"><video src="${url}" controls data-media-type="video" class="rounded-xl border border-slate-700 shadow-lg w-full"></video><div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-600 text-white text-[10px] px-2 py-1 rounded cursor-pointer" onclick="this.parentElement.remove()">删除</div></div>`;
+        return `<div class="my-4 max-w-full md:max-w-md group relative animate-popIn"><video src="${url}" controls data-media-type="video" class="rounded-2xl border ${theme === 'dark' ? 'border-slate-700 shadow-xl' : 'border-mochi-border shadow-mochi'} w-full"></video><div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-rose-500 text-white text-[10px] px-3 py-1.5 rounded-xl font-black cursor-pointer shadow-lg" onclick="this.parentElement.remove()">删除</div></div>`;
       })
       .replace(/\n/g, '<br>');
   };
@@ -72,74 +90,86 @@ export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddProm
         if (img && img.dataset.mediaType === 'img') return `{media-img}${img.src}{/media}`;
         const video = node.querySelector('video');
         if (video && video.dataset.mediaType === 'video') return `{media-video}${video.src}{/media}`;
-        if (['DIV', 'P'].includes(node.tagName)) return '\n' + Array.from(node.childNodes).map(convert).join('');
+        if (['DIV', 'P', 'H1', 'H2', 'BLOCKQUOTE', 'LI'].includes(node.tagName)) return '\n' + Array.from(node.childNodes).map(convert).join('');
       }
       return Array.from(node.childNodes).map(convert).join('');
     };
     return Array.from(temp.childNodes).map(convert).join('').trim();
   };
 
-  const insertMedia = (type: 'img' | 'video', url: string) => {
-    if (!editorRef.current) return;
-    editorRef.current.focus();
-    const tag = type === 'img' ? `{media-img}${url}{/media}` : `{media-video}${url}{/media}`;
-    const html = parseHighlightsToHtml(tag);
-    document.execCommand('insertHTML', false, html + '<br>');
+  const handleEditorInput = (e: React.FormEvent<HTMLDivElement>) => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+    const range = selection.getRangeAt(0);
+    const container = range.startContainer;
+    const offset = range.startOffset;
+    const textContent = container.textContent || '';
+    const textBefore = textContent.slice(0, offset);
+    
+    if (textBefore.endsWith('/')) {
+      const rect = range.getBoundingClientRect();
+      setSlashMenu({ visible: true, x: rect.left, y: rect.bottom + window.scrollY, index: 0 });
+    } else if (slashMenu.visible) {
+      setSlashMenu({ ...slashMenu, visible: false });
+    }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setIsUploading(true);
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
-    const filePath = `scripts/${fileName}`;
-
     try {
-      // 1. 上传到 Supabase Storage
-      const { data, error } = await supabase.storage
-        .from('studiosync_assets')
-        .upload(filePath, file);
-
-      if (error) throw error;
-
-      // 2. 获取公共 URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('studiosync_assets')
-        .getPublicUrl(filePath);
-
-      // 3. 插入编辑器
-      if (file.type.startsWith('image/')) {
-        insertMedia('img', publicUrl);
-      } else if (file.type.startsWith('video/')) {
-        insertMedia('video', publicUrl);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `prompts/${fileName}`;
+      const { error: uploadError } = await supabase.storage.from('assets').upload(filePath, file);
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from('assets').getPublicUrl(filePath);
+      const isImage = file.type.startsWith('image/');
+      const mediaHtml = isImage 
+        ? `<div class="my-4 max-w-full md:max-w-md group relative inline-block animate-popIn"><img src="${publicUrl}" data-media-type="img" class="rounded-2xl border ${theme === 'dark' ? 'border-slate-700 shadow-xl' : 'border-mochi-border shadow-mochi'}" /><div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-rose-500 text-white text-[10px] px-3 py-1.5 rounded-xl font-black cursor-pointer shadow-lg" onclick="this.parentElement.remove()">删除</div></div>`
+        : `<div class="my-4 max-w-full md:max-w-md group relative animate-popIn"><video src="${publicUrl}" controls data-media-type="video" class="rounded-2xl border ${theme === 'dark' ? 'border-slate-700 shadow-xl' : 'border-mochi-border shadow-mochi'} w-full"></video><div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-rose-500 text-white text-[10px] px-3 py-1.5 rounded-xl font-black cursor-pointer shadow-lg" onclick="this.parentElement.remove()">删除</div></div>`;
+      if (editorRef.current) {
+        editorRef.current.focus();
+        document.execCommand('insertHTML', false, mediaHtml + '&nbsp;');
       }
-    } catch (err) {
-      console.error('Upload failed:', err);
-      alert('素材上传失败，请检查数据库配置');
-    } finally {
-      setIsUploading(false);
-      if (mediaInputRef.current) mediaInputRef.current.value = '';
-    }
+    } catch (error) { console.error('Error uploading:', error); alert('上传失败'); } finally { setIsUploading(false); if (e.target) e.target.value = ''; }
   };
 
-  const handleGenerate = async () => {
-    if (!topic) return alert("请先输入主题");
-    setIsLoading(true);
-    const content = await generateScriptIdea(topic, style);
-    if (editorRef.current) {
-        editorRef.current.innerHTML = parseHighlightsToHtml(content);
+  const menuItems = [
+    { id: 'h1', label: '大标题', desc: '# 大标题', icon: 'H1', action: () => executeCommand('h1') },
+    { id: 'h2', label: '次级标题', desc: '## 中标题', icon: 'H2', action: () => executeCommand('h2') },
+    { id: 'img', label: '插入图片', desc: '上传团队素材', icon: '🖼️', action: () => executeCommand('img') },
+    { id: 'hl', label: '荧光标记', desc: '高亮核心文本', icon: '✨', action: () => executeCommand('hl') },
+  ];
+
+  const executeCommand = (cmd: string) => {
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      const node = range.startContainer;
+      const offset = range.startOffset;
+      if (node.textContent && node.textContent.charAt(offset - 1) === '/') {
+        range.setStart(node, offset - 1);
+        range.deleteContents();
+      }
     }
-    setIsLoading(false);
+    switch (cmd) {
+      case 'img': mediaInputRef.current?.click(); break;
+      case 'h1': document.execCommand('formatBlock', false, 'H1'); break;
+      case 'h2': document.execCommand('formatBlock', false, 'H2'); break;
+      case 'hl': applyColor('yellow'); break;
+    }
+    setSlashMenu(prev => ({ ...prev, visible: false }));
   };
 
   const applyColor = (color: string) => {
     const selection = window.getSelection();
     if (!selection || selection.isCollapsed) return;
+    const colors = theme === 'dark' ? HIGHLIGHT_COLORS : LIGHT_HIGHLIGHT_COLORS;
     const range = selection.getRangeAt(0);
     const span = document.createElement('span');
-    span.className = `px-1 rounded border ${HIGHLIGHT_COLORS[color]}`;
+    span.className = `px-1 rounded border ${colors[color]}`;
     span.dataset.color = color;
     range.surroundContents(span);
     selection.removeAllRanges();
@@ -149,7 +179,6 @@ export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddProm
     const html = editorRef.current?.innerHTML || '';
     const contentToSave = parseHtmlToHighlights(html);
     if (!topic) return alert("剧本标题不能为空");
-
     const promptData: ScriptPrompt = {
       id: activePromptId || Date.now().toString(),
       title: topic,
@@ -157,86 +186,90 @@ export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddProm
       tags: [style],
       createdAt: new Date().toISOString()
     };
-
-    try {
-      await onAddPrompt(promptData);
-      setActivePromptId(promptData.id);
-      alert("剧本已保存，媒体素材已链接至云端。");
-    } catch (err) {
-      alert("数据库保存失败。");
-    }
+    try { await onAddPrompt(promptData); setActivePromptId(promptData.id); alert("剧本已保存"); } catch (err) { alert("保存失败"); }
   };
 
   return (
-    <div className="h-full flex flex-col md:flex-row gap-6 animate-fadeIn relative">
+    <div className="h-full flex flex-col md:flex-row gap-8 animate-fadeIn relative">
       {isUploading && (
-        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center">
-            <div className="bg-slate-900 p-8 rounded-2xl border border-blue-500/30 flex flex-col items-center gap-4 animate-popIn">
-                <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                <p className="text-white font-bold tracking-widest">正在上传超大素材至云端...</p>
-                <p className="text-slate-500 text-xs">这取决于你的网络速度</p>
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-md flex items-center justify-center">
+            <div className={`p-10 rounded-[2.5rem] border flex flex-col items-center gap-6 animate-popIn ${theme === 'dark' ? 'bg-slate-900 border-blue-500/30' : 'bg-white border-mochi-border shadow-mochi'}`}>
+                <div className={`w-14 h-14 border-4 border-t-transparent rounded-full animate-spin ${theme === 'dark' ? 'border-blue-500' : 'border-rose-400'}`}></div>
+                <p className={`font-black tracking-widest ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>正在同步至云端...</p>
             </div>
         </div>
       )}
 
-      <div className="w-full md:w-64 shrink-0 flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-white">脚本仓库</h2>
-            <button onClick={() => setActivePromptId(null)} className="p-2 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg transition-all">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+      {slashMenu.visible && (
+        <div className={`fixed z-[110] border rounded-[1.5rem] shadow-2xl w-72 overflow-hidden animate-popIn ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-mochi-border'}`} style={{ top: slashMenu.y, left: slashMenu.x }}>
+          <div className={`p-4 border-b text-[10px] font-black uppercase tracking-[0.2em] opacity-40 ${theme === 'dark' ? 'bg-slate-800/50 border-slate-800 text-slate-400' : 'bg-mochi-bg border-mochi-border text-slate-500'}`}>剧本指令</div>
+          {menuItems.map((item, i) => (
+            <div key={item.id} onClick={item.action} className={`flex items-center gap-4 p-4 cursor-pointer transition-all ${slashMenu.index === i ? (theme === 'dark' ? 'bg-blue-600/20 border-l-4 border-blue-500' : 'bg-mochi-pink/20 border-l-4 border-rose-400') : (theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-mochi-bg')}`}>
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm shadow-sm ${theme === 'dark' ? 'bg-slate-800 text-slate-400' : 'bg-white border border-mochi-border'}`}>{item.icon}</div>
+              <div>
+                <div className={`text-sm font-black ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>{item.label}</div>
+                <div className="text-[10px] text-slate-500 font-bold">{item.desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="w-full md:w-72 shrink-0 flex flex-col gap-6">
+        <div className="flex items-center justify-between px-2">
+            <h2 className={`text-2xl font-black ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>脚本仓库</h2>
+            <button onClick={() => setActivePromptId(null)} className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all shadow-sm active:scale-90 ${theme === 'dark' ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-mochi-pink text-white hover:bg-rose-400 shadow-mochi-sm'}`}>
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
             </button>
         </div>
-        <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar max-h-[70vh]">
+        <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar max-h-[75vh]">
             {prompts.map(p => (
-                <div key={p.id} onClick={() => setActivePromptId(p.id)} className={`p-3 rounded-xl border cursor-pointer transition-all ${activePromptId === p.id ? 'bg-blue-600/10 border-blue-500' : 'bg-slate-900 border-slate-800 hover:border-slate-700'}`}>
-                    <h3 className="text-sm font-bold text-slate-200 truncate">{p.title}</h3>
-                    <div className="flex justify-between items-center mt-2 text-[10px] text-slate-500">
+                <div key={p.id} onClick={() => setActivePromptId(p.id)} className={`p-4 rounded-2xl border cursor-pointer transition-all group ${activePromptId === p.id ? (theme === 'dark' ? 'bg-blue-600/10 border-blue-500 shadow-lg' : 'bg-white border-rose-300 shadow-mochi ring-1 ring-rose-200') : (theme === 'dark' ? 'bg-slate-900 border-slate-800 hover:border-slate-700' : 'bg-white border-mochi-border hover:shadow-mochi-sm hover:scale-[1.02]')}`}>
+                    <h3 className={`text-sm font-black truncate mb-3 ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>{p.title}</h3>
+                    <div className="flex justify-between items-center text-[10px] font-black opacity-40 uppercase tracking-widest">
                       <span>{new Date(p.createdAt).toLocaleDateString()}</span>
-                      <button onClick={(e) => { e.stopPropagation(); onDeletePrompt(p.id); }} className="hover:text-red-400">删除</button>
+                      <button onClick={(e) => { e.stopPropagation(); onDeletePrompt(p.id); }} className="hover:text-rose-500 transition-colors">删除</button>
                     </div>
                 </div>
             ))}
+            {prompts.length === 0 && <div className="text-center py-20 opacity-20 font-black italic uppercase tracking-tighter">Empty Library</div>}
         </div>
       </div>
 
-      <div className="flex-1 bg-slate-900 rounded-2xl border border-slate-800 flex flex-col overflow-hidden shadow-2xl relative min-h-[600px]">
-        <div className="bg-slate-800/80 backdrop-blur-md border-b border-slate-700 px-4 py-2 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-20">
+      <div className={`flex-1 rounded-[2.5rem] border flex flex-col overflow-hidden shadow-2xl transition-all duration-500 ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-mochi-border shadow-mochi'}`}>
+        <div className={`px-6 py-4 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-20 transition-colors ${theme === 'dark' ? 'bg-slate-800/90 border-b border-slate-700' : 'bg-mochi-bg/80 border-b border-mochi-border'}`}>
             <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1 bg-slate-900/50 p-1 rounded-lg border border-slate-700">
-                    {Object.entries(HIGHLIGHT_COLORS).map(([color, classes]) => (
-                        <button key={color} onClick={() => applyColor(color)} className={`w-6 h-6 rounded flex items-center justify-center transition-transform hover:scale-110 ${classes.split(' ')[0]}`} />
+                <div className={`flex items-center gap-1.5 p-1.5 rounded-xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-mochi-border'}`}>
+                    {Object.entries(theme === 'dark' ? HIGHLIGHT_COLORS : LIGHT_HIGHLIGHT_COLORS).map(([color, classes]) => (
+                        <button key={color} onClick={() => applyColor(color)} className={`w-6 h-6 rounded-lg transition-transform hover:scale-125 ${classes.split(' ')[0]}`} />
                     ))}
                 </div>
-                <div className="h-6 w-[1px] bg-slate-700 mx-1" />
-                <button onClick={() => mediaInputRef.current?.click()} className="p-1.5 text-slate-400 hover:text-blue-400" title="上传云端素材">
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                <div className="h-8 w-[1px] bg-slate-300/30 mx-2" />
+                <button onClick={() => { mediaInputRef.current?.click(); }} className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all ${theme === 'dark' ? 'text-slate-400 hover:text-blue-400 hover:bg-slate-900' : 'text-slate-500 hover:text-rose-500 hover:bg-rose-50'}`}>
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
                 </button>
-                <input type="file" ref={mediaInputRef} className="hidden" accept="image/*,video/*" onChange={handleFileUpload} />
+                <input type="file" ref={mediaInputRef} className="hidden" onChange={handleFileUpload} accept="image/*,video/*" />
             </div>
             
-            <div className="flex items-center gap-2">
-                <button onClick={handleGenerate} disabled={isLoading} className="bg-purple-600/20 text-purple-400 border border-purple-500/30 px-3 py-1.5 rounded-lg text-xs font-bold transition-all">
-                    {isLoading ? '正在创作...' : 'Gemini 生成'}
-                </button>
-                <button onClick={savePrompt} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-lg transition-all">
-                  保存剧本
-                </button>
-            </div>
+            <button onClick={savePrompt} className={`px-8 py-3 rounded-[1rem] text-xs font-black shadow-lg transition-all active:scale-95 ${theme === 'dark' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-mochi-pink hover:bg-rose-400 text-white shadow-mochi-sm'}`}>
+              保存剧本
+            </button>
         </div>
 
-        <div className="flex-1 p-6 md:p-12 overflow-y-auto custom-scrollbar">
+        <div className={`flex-1 p-10 md:p-16 overflow-y-auto custom-scrollbar ${theme === 'light' ? 'bg-white' : 'bg-transparent'}`}>
             <input 
                 type="text" 
                 placeholder="在此输入剧本标题..."
-                className="w-full bg-transparent text-3xl font-bold text-white mb-6 focus:outline-none placeholder:text-slate-800"
+                className={`w-full bg-transparent text-4xl font-black mb-10 focus:outline-none placeholder:opacity-10 transition-colors ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
             />
             <div 
                 ref={editorRef}
                 contentEditable
-                className="w-full min-h-[500px] bg-transparent text-slate-300 text-lg leading-loose focus:outline-none font-serif whitespace-pre-wrap outline-none pb-20"
-                placeholder="点击云端图标上传超大视频..."
+                onInput={handleEditorInput}
+                className={`w-full min-h-[600px] bg-transparent text-xl leading-[2.2] focus:outline-none font-serif outline-none pb-40 prose dark:prose-invert max-w-none ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}
+                placeholder="输入 / 唤起快捷菜单，记录您的天才创意..."
             />
         </div>
       </div>
