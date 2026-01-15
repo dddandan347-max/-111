@@ -28,6 +28,7 @@ export interface Transaction {
   category: string;
   linkedTaskId?: string;
   notes?: string;
+  attachmentUrl?: string; // Support for invoice/receipt images
 }
 
 export interface ScriptPrompt {
@@ -54,7 +55,6 @@ export interface AssetItem {
   type: 'image' | 'reference';
 }
 
-// Added missing Character interface
 export interface Character {
   id: string;
   name: string;
