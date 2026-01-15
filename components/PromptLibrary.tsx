@@ -29,7 +29,6 @@ export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddProm
   const editorRef = useRef<HTMLDivElement>(null);
   const mediaInputRef = useRef<HTMLInputElement>(null);
 
-  // 当选择不同的剧本时，解析内容并注入编辑器
   useEffect(() => {
     if (activePromptId) {
       const prompt = prompts.find(p => p.id === activePromptId);
@@ -43,27 +42,22 @@ export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddProm
     }
   }, [activePromptId, prompts]);
 
-  // 将数据库中的标记字符串转换为 HTML
   const parseHighlightsToHtml = (text: string) => {
     if (!text) return '';
     return text
-      // 1. 解析高亮
       .replace(/\{hl-(\w+)\}(.*?)\{\/hl\}/g, (_, color, inner) => {
         const classes = HIGHLIGHT_COLORS[color] || HIGHLIGHT_COLORS.yellow;
         return `<span class="px-1 rounded border ${classes}" data-color="${color}">${inner}</span>`;
       })
-      // 2. 解析图片 (存入 data-src 以便序列化)
       .replace(/\{media-img\}(.*?)\{\/media\}/g, (_, url) => {
         return `<div class="my-4 max-w-full md:max-w-md group relative inline-block"><img src="${url}" data-media-type="img" class="rounded-xl border border-slate-700 shadow-lg" /><div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-600 text-white text-[10px] px-2 py-1 rounded cursor-pointer" onclick="this.parentElement.remove()">删除媒体</div></div>`;
       })
-      // 3. 解析视频
       .replace(/\{media-video\}(.*?)\{\/media\}/g, (_, url) => {
         return `<div class="my-4 max-w-full md:max-w-md group relative"><video src="${url}" controls data-media-type="video" class="rounded-xl border border-slate-700 shadow-lg w-full"></video><div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-600 text-white text-[10px] px-2 py-1 rounded cursor-pointer" onclick="this.parentElement.remove()">删除媒体</div></div>`;
       })
       .replace(/\n/g, '<br>');
   };
 
-  // 将编辑器中的 HTML 转换回数据库标记字符串
   const parseHtmlToHighlights = (html: string) => {
     const temp = document.createElement('div');
     temp.innerHTML = html;
@@ -73,21 +67,26 @@ export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddProm
       if (node.nodeName === 'BR') return '\n';
       
       if (node instanceof HTMLElement) {
-        // 文字高亮
         if (node.tagName === 'SPAN' && node.dataset.color) {
           return `{hl-${node.dataset.color}}${node.innerText}{/hl}`;
         }
-        // 图片 (检查子元素中的 img)
+        // 处理媒体容器
         const img = node.querySelector('img');
         if (img && img.dataset.mediaType === 'img') {
           return `{media-img}${img.src}{/media}`;
         }
-        // 视频
         const video = node.querySelector('video');
         if (video && video.dataset.mediaType === 'video') {
           return `{media-video}${video.src}{/media}`;
         }
-        // 处理普通 div/p 换行
+        // 如果节点本身就是 img 或 video
+        if (node.tagName === 'IMG' && (node as any).dataset.mediaType === 'img') {
+          return `{media-img}${(node as HTMLImageElement).src}{/media}`;
+        }
+        if (node.tagName === 'VIDEO' && (node as any).dataset.mediaType === 'video') {
+          return `{media-video}${(node as HTMLVideoElement).src}{/media}`;
+        }
+
         if (['DIV', 'P'].includes(node.tagName)) {
            return '\n' + Array.from(node.childNodes).map(convert).join('');
         }
@@ -110,10 +109,9 @@ export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddProm
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // 限制文件大小，因为 Base64 会让字符串变得很大
-    if (file.size > 2 * 1024 * 1024) {
-      alert("文件太大 (最大 2MB)，请尝试压缩或使用外部链接。");
-      return;
+    // 已解除大小限制，仅保留一个温和提示
+    if (file.size > 50 * 1024 * 1024) {
+      if(!confirm("文件超过 50MB，Base64 编码可能会导致保存非常缓慢，确定继续吗？")) return;
     }
 
     const reader = new FileReader();
@@ -150,7 +148,7 @@ export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddProm
     selection.removeAllRanges();
   };
 
-  const savePrompt = () => {
+  const savePrompt = async () => {
     const html = editorRef.current?.innerHTML || '';
     const contentToSave = parseHtmlToHighlights(html);
     
@@ -164,9 +162,14 @@ export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddProm
       createdAt: new Date().toISOString()
     };
 
-    onAddPrompt(promptData);
-    setActivePromptId(promptData.id);
-    alert("剧本与媒体素材已同步至云端。");
+    try {
+      await onAddPrompt(promptData);
+      setActivePromptId(promptData.id);
+      alert("保存成功！大容量素材已同步。");
+    } catch (err) {
+      console.error(err);
+      alert("保存失败，可能是文件超出了数据库单行最大限制 (PostgreSQL 通常限制 1GB，但网络传输可能受限)。");
+    }
   };
 
   return (
