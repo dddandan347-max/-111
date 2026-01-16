@@ -44,8 +44,8 @@ const FONT_SIZES = [
   { label: '48px (标题)', val: '48px' },
 ];
 
-// 预定义分类（用户可在标签中定义）
-const CATEGORY_TAGS = ['全部', '电影', '短视频', '广告', '纪录片', 'Vlog'];
+// 预定义分类，实际使用时可以从 prompts 的 tags 中动态提取
+const CATEGORY_TAGS = ['全部', '电影', '短视频', '广告', '纪录片', 'Vlog', '待分类'];
 
 export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddPrompt, onDeletePrompt }) => {
   const [activePromptId, setActivePromptId] = useState<string | null>(null);
@@ -124,8 +124,9 @@ export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddProm
   const savePrompt = async () => {
     if (!localTopic) return alert("标题不能为空");
     const content = editorRef.current?.innerHTML || '';
-    // 默认给第一个选中的标签或分类
-    const currentTags = activeTab === '全部' ? ['电影'] : [activeTab];
+    // 如果是从特定标签页进入的新建，自动带上该标签
+    const currentTags = activeTab === '全部' ? ['待分类'] : [activeTab];
+    
     onAddPrompt({
       id: activePromptId || Date.now().toString(),
       title: localTopic,
@@ -144,9 +145,9 @@ export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddProm
   const isEditing = activePromptId !== null;
 
   return (
-    <div className={`h-full flex flex-col transition-all duration-500 ${isEditing ? 'fixed inset-0 z-[100] bg-white dark:bg-slate-950 p-0 overflow-hidden' : 'space-y-8'}`}>
+    <div className={`h-full flex flex-col transition-all duration-500 ${isEditing ? 'fixed inset-0 z-[100] bg-white dark:bg-slate-950 p-0 overflow-hidden' : 'space-y-12'}`}>
       
-      {/* 选区浮动菜单 (仅编辑模式显示) */}
+      {/* 选区魔法浮动菜单 (编辑器中显示) */}
       {isEditing && selectionMenu && (
         <div 
           className="fixed z-[150] flex items-center gap-1 p-2 rounded-2xl border shadow-[0_20px_60px_rgba(0,0,0,0.3)] animate-popIn -translate-x-1/2 bg-white dark:bg-slate-800 dark:border-slate-700"
@@ -158,65 +159,76 @@ export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddProm
             <button onClick={() => exec('italic')} className="w-10 h-10 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 italic">I</button>
             <button onClick={() => exec('underline')} className="w-10 h-10 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 underline">U</button>
           </div>
+          
+          {/* 字号选择 - 修复 hover 消失问题 */}
           <div className="relative group px-1 border-r dark:border-slate-700">
              <button className="text-[10px] font-black uppercase tracking-widest px-3 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">字号</button>
-             <div className="absolute bottom-0 left-0 w-full h-4 translate-y-full bg-transparent group-hover:block hidden"></div>
-             <div className="absolute hidden group-hover:block bottom-full mb-1 left-0 w-40 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-2xl shadow-2xl overflow-hidden animate-popIn">
+             {/* Bridge bridge bridge! */}
+             <div className="absolute bottom-0 left-0 w-full h-6 translate-y-full bg-transparent group-hover:block hidden"></div>
+             <div className="absolute hidden group-hover:block bottom-full mb-2 left-0 w-44 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-2xl shadow-2xl overflow-hidden animate-popIn">
                 {FONT_SIZES.map(f => (
-                  <button key={f.val} onClick={() => exec('fontSize', f.val)} className="w-full text-left px-4 py-3 text-xs font-bold hover:bg-blue-600 hover:text-white transition-colors border-b dark:border-slate-700 last:border-0">{f.label}</button>
+                  <button key={f.val} onClick={() => exec('fontSize', f.val)} className="w-full text-left px-4 py-3.5 text-xs font-bold hover:bg-blue-600 hover:text-white transition-colors border-b dark:border-slate-700 last:border-0">{f.label}</button>
                 ))}
              </div>
           </div>
+
           <div className="relative group px-1 border-r dark:border-slate-700">
              <button className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 font-black text-rose-500">A</button>
-             <div className="absolute bottom-0 left-0 w-full h-4 translate-y-full bg-transparent group-hover:block hidden"></div>
-             <div className="absolute hidden group-hover:grid grid-cols-5 gap-2 p-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-2xl shadow-2xl bottom-full mb-1 left-1/2 -translate-x-1/2 w-52">
+             <div className="absolute bottom-0 left-0 w-full h-6 translate-y-full bg-transparent group-hover:block hidden"></div>
+             <div className="absolute hidden group-hover:grid grid-cols-5 gap-2 p-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-2xl shadow-2xl bottom-full mb-2 left-1/2 -translate-x-1/2 w-52">
                 {TEXT_COLORS.map(c => (
-                  <button key={c.color} onClick={() => exec('foreColor', c.color)} className="w-8 h-8 rounded-lg border dark:border-slate-600 hover:scale-110 transition-transform" style={{ backgroundColor: c.color }} title={c.name}></button>
+                  <button key={c.color} onClick={() => exec('foreColor', c.color)} className="w-8 h-8 rounded-lg border dark:border-slate-600 hover:scale-110 transition-transform" style={{ backgroundColor: c.color }}></button>
                 ))}
              </div>
           </div>
+
           <div className="relative group px-1">
              <button className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700">🖍️</button>
-             <div className="absolute bottom-0 left-0 w-full h-4 translate-y-full bg-transparent group-hover:block hidden"></div>
-             <div className="absolute hidden group-hover:grid grid-cols-5 gap-2 p-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-2xl shadow-2xl bottom-full mb-1 left-1/2 -translate-x-1/2 w-52">
+             <div className="absolute bottom-0 left-0 w-full h-6 translate-y-full bg-transparent group-hover:block hidden"></div>
+             <div className="absolute hidden group-hover:grid grid-cols-5 gap-2 p-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-2xl shadow-2xl bottom-full mb-2 left-1/2 -translate-x-1/2 w-52">
                 {BG_COLORS.map(c => (
-                  <button key={c.color} onClick={() => exec('hiliteColor', c.color)} className="w-8 h-8 rounded-lg border dark:border-slate-600 hover:scale-110 transition-transform" style={{ backgroundColor: c.color }} title={c.name}></button>
+                  <button key={c.color} onClick={() => exec('hiliteColor', c.color)} className="w-8 h-8 rounded-lg border dark:border-slate-600 hover:scale-110 transition-transform" style={{ backgroundColor: c.color }}></button>
                 ))}
              </div>
           </div>
         </div>
       )}
 
-      {/* 列表页 UI */}
+      {/* 剧本库列表视图 */}
       {!isEditing && (
         <>
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-            <div>
-              <h2 className={`text-5xl font-black italic tracking-tighter ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>剧本库 <span className="text-2xl opacity-30 italic font-mono uppercase tracking-[0.2em]">vault</span></h2>
-              <p className="text-sm font-bold opacity-40 mt-2">管理团队所有影视及短视频剧本资产</p>
+          {/* Header */}
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
+            <div className="space-y-2">
+              <h2 className={`text-6xl font-black italic tracking-tighter ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
+                剧本库 <span className="text-3xl opacity-20 font-mono tracking-widest ml-4">SCRIPTS_VAULT</span>
+              </h2>
+              <p className="text-sm font-bold opacity-40 uppercase tracking-widest">Team Script Assets & Creative Management</p>
             </div>
+            
             <button 
               onClick={() => { setActivePromptId(Date.now().toString()); setLocalTopic(''); }}
-              className={`flex items-center gap-3 px-8 py-4 rounded-[1.5rem] font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-xl ${
+              className={`group flex items-center gap-4 px-10 py-5 rounded-[2rem] font-black text-sm uppercase tracking-[0.2em] transition-all active:scale-95 shadow-2xl ${
                 theme === 'dark' ? 'bg-blue-600 text-white shadow-blue-900/40' : 'bg-rose-400 text-white shadow-mochi'
               }`}
             >
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
-              创作新剧本
+              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center group-hover:rotate-90 transition-transform">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
+              </div>
+              开启新的创作
             </button>
           </div>
 
-          {/* 筛选标签栏 */}
-          <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+          {/* 分类筛选器 */}
+          <div className="flex items-center gap-3 overflow-x-auto pb-4 no-scrollbar">
              {CATEGORY_TAGS.map(tag => (
                <button 
                  key={tag} 
                  onClick={() => setActiveTab(tag)}
-                 className={`px-6 py-2 rounded-2xl text-xs font-black transition-all whitespace-nowrap ${
+                 className={`px-8 py-3 rounded-2xl text-[11px] font-black transition-all border whitespace-nowrap uppercase tracking-widest ${
                    activeTab === tag 
-                    ? (theme === 'dark' ? 'bg-white text-slate-900' : 'bg-slate-800 text-white') 
-                    : (theme === 'dark' ? 'bg-slate-900 text-slate-500 border border-slate-800' : 'bg-white text-slate-400 border border-slate-100 shadow-sm')
+                    ? (theme === 'dark' ? 'bg-white text-slate-900 border-white' : 'bg-slate-800 text-white border-slate-800 shadow-lg') 
+                    : (theme === 'dark' ? 'bg-slate-900 text-slate-500 border-slate-800 hover:border-slate-600' : 'bg-white text-slate-400 border-mochi-border hover:shadow-sm')
                  }`}
                >
                  {tag}
@@ -224,126 +236,149 @@ export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddProm
              ))}
           </div>
 
-          {/* 剧本网格 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 pb-20">
+          {/* 剧本响应式网格布局 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-8 pb-32">
             {filteredPrompts.map(p => (
               <div 
                 key={p.id} 
                 onClick={() => setActivePromptId(p.id)}
-                className={`group relative p-8 rounded-[2.5rem] border transition-all duration-500 cursor-pointer min-h-[280px] flex flex-col justify-between overflow-hidden ${
+                className={`group relative p-10 rounded-[3rem] border transition-all duration-700 cursor-pointer min-h-[320px] flex flex-col justify-between overflow-hidden ${
                   theme === 'dark' 
-                    ? 'bg-slate-900 border-slate-800 hover:border-blue-500 shadow-xl' 
-                    : 'bg-white border-mochi-border hover:shadow-mochi hover:-translate-y-2'
+                    ? 'bg-slate-900 border-slate-800 hover:border-blue-500 hover:shadow-2xl shadow-blue-900/10' 
+                    : 'bg-white border-mochi-border hover:shadow-mochi hover:-translate-y-3'
                 }`}
               >
-                {/* 装饰性背景 */}
-                <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full blur-3xl opacity-10 transition-all group-hover:opacity-30 ${theme === 'dark' ? 'bg-blue-500' : 'bg-rose-500'}`}></div>
+                {/* 装饰性光晕背景 */}
+                <div className={`absolute -right-10 -top-10 w-40 h-40 rounded-full blur-[80px] opacity-0 group-hover:opacity-20 transition-all duration-1000 ${theme === 'dark' ? 'bg-blue-400' : 'bg-rose-400'}`}></div>
                 
                 <div className="relative">
-                  <div className="flex items-center justify-between mb-4">
-                     <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-lg border ${
-                       theme === 'dark' ? 'bg-slate-800 border-slate-700 text-blue-400' : 'bg-rose-50 border-rose-100 text-rose-500'
+                  <div className="flex items-center justify-between mb-8">
+                     <div className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border ${
+                       theme === 'dark' ? 'bg-slate-800 border-slate-700 text-blue-400' : 'bg-mochi-pink/20 border-rose-100 text-rose-500'
                      }`}>
-                       {p.tags?.[0] || '默认'}
-                     </span>
-                     <span className="text-[10px] font-mono opacity-20 font-black">{new Date(p.createdAt).toLocaleDateString()}</span>
+                       {p.tags?.[0] || '待分类'}
+                     </div>
+                     <span className="text-[10px] font-black opacity-20 tracking-tighter uppercase">{new Date(p.createdAt).toLocaleDateString()}</span>
                   </div>
-                  <h3 className={`text-2xl font-black leading-tight mb-4 group-hover:text-blue-500 transition-colors ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
-                    {p.title || '无标题剧本'}
+                  
+                  <h3 className={`text-3xl font-black leading-tight mb-6 group-hover:text-blue-500 transition-colors line-clamp-2 tracking-tighter ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
+                    {p.title || '未命名项目'}
                   </h3>
-                  <div className={`text-xs opacity-40 line-clamp-3 leading-relaxed mb-6 font-medium`}>
-                    {p.content?.replace(/<[^>]*>/g, '').substring(0, 100) || '暂无内容预览...'}
+                  
+                  <div className={`text-sm opacity-40 line-clamp-3 leading-relaxed font-medium mb-8`}>
+                    {p.content?.replace(/<[^>]*>/g, '').substring(0, 120) || '此处静悄悄，还没有任何剧本文字...'}
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-4 border-t dark:border-slate-800 border-slate-50">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-[8px] font-black">
+                <div className="relative flex items-center justify-between pt-6 border-t dark:border-slate-800 border-slate-50">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black shadow-lg ${theme === 'dark' ? 'bg-slate-800 text-blue-400' : 'bg-mochi-bg text-rose-500'}`}>
                        {p.title.charAt(0)}
                     </div>
-                    <span className="text-[10px] font-black uppercase opacity-30 tracking-widest">MASTER_VER</span>
+                    <div className="flex flex-col">
+                        <span className="text-[9px] font-black uppercase tracking-widest opacity-30">Production</span>
+                        <span className="text-[10px] font-black opacity-60">MASTER_V1.0</span>
+                    </div>
                   </div>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); if(confirm('确认永久删除？')){ onDeletePrompt(p.id); }}}
-                    className="p-2 opacity-0 group-hover:opacity-100 text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
-                  >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                  </button>
+                  
+                  <div className="flex gap-2">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); if(confirm('该操作无法撤销，确定永久删除剧本？')){ onDeletePrompt(p.id); }}}
+                        className="w-10 h-10 flex items-center justify-center rounded-2xl opacity-0 group-hover:opacity-100 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all duration-300"
+                      >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      </button>
+                  </div>
                 </div>
               </div>
             ))}
 
-            {/* 空状态预览 */}
+            {/* 空状态卡片 */}
             {filteredPrompts.length === 0 && (
-              <div className="col-span-full py-32 rounded-[3rem] border-2 border-dashed flex flex-col items-center justify-center opacity-20 transition-all border-slate-300 dark:border-slate-800">
-                 <div className="text-6xl mb-6">📄</div>
-                 <p className="font-black italic uppercase tracking-[0.3em] text-sm">No_Scripts_Found</p>
+              <div className="col-span-full py-40 rounded-[4rem] border-4 border-dashed border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center opacity-40 hover:opacity-100 transition-all">
+                 <div className="text-8xl mb-8 animate-bounce">🎬</div>
+                 <p className="font-black italic uppercase tracking-[0.5em] text-lg text-slate-400">Project_Vault_Empty</p>
+                 <button 
+                    onClick={() => { setActivePromptId(Date.now().toString()); setLocalTopic(''); }}
+                    className="mt-8 text-blue-500 font-black text-sm uppercase underline tracking-widest"
+                 >
+                    立即开始创作
+                 </button>
               </div>
             )}
           </div>
         </>
       )}
 
-      {/* 全屏编辑器 (编辑模式) */}
+      {/* 沉浸式全屏编辑器 (编辑模式) */}
       {isEditing && (
         <div className="flex-1 flex flex-col h-full animate-fadeIn overflow-hidden">
-          <div className="h-20 shrink-0 border-b flex items-center justify-between px-10 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl z-[110]">
-             <button onClick={() => setActivePromptId(null)} className="flex items-center gap-3 font-black text-sm group">
-                <div className="w-10 h-10 rounded-full border flex items-center justify-center group-hover:bg-slate-100 dark:group-hover:bg-slate-800 transition-all">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+          {/* Editor Header */}
+          <div className="h-24 shrink-0 border-b flex items-center justify-between px-12 bg-white/95 dark:bg-slate-950/95 backdrop-blur-2xl z-[110]">
+             <button onClick={() => setActivePromptId(null)} className="flex items-center gap-4 font-black text-sm group">
+                <div className="w-12 h-12 rounded-2xl border flex items-center justify-center group-hover:bg-slate-100 dark:group-hover:bg-slate-800 transition-all">
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                 </div>
-                <span>剧本资产库</span>
+                <div className="flex flex-col">
+                    <span className="opacity-40 text-[9px] uppercase tracking-widest">Back to</span>
+                    <span className="text-base tracking-tighter">剧本中心</span>
+                </div>
              </button>
              
-             <div className="flex items-center gap-6">
-                <span className="hidden md:block text-[10px] font-black uppercase tracking-[0.4em] opacity-20">Auto Sync Active</span>
-                <button onClick={savePrompt} className="px-10 py-3.5 rounded-2xl bg-blue-600 text-white font-black text-sm shadow-xl shadow-blue-500/30 hover:bg-blue-500 active:scale-95 transition-all">同步至云端</button>
-                <div className="w-[1px] h-8 bg-slate-200 dark:bg-slate-800 mx-2"></div>
-                <button onClick={() => { if(confirm('确认废弃该剧本？')){ onDeletePrompt(activePromptId!); setActivePromptId(null); }}} className="w-12 h-12 flex items-center justify-center text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-all"><svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+             <div className="flex items-center gap-8">
+                <div className="hidden md:flex flex-col items-end">
+                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-emerald-500 animate-pulse">Live Sync Active</span>
+                    <span className="text-[9px] font-black opacity-20 uppercase tracking-widest">Editing with Cloud Engine</span>
+                </div>
+                <button onClick={savePrompt} className="px-12 py-4 rounded-2xl bg-blue-600 text-white font-black text-sm shadow-2xl shadow-blue-500/30 hover:bg-blue-500 active:scale-95 transition-all uppercase tracking-widest">保存剧本</button>
+                <div className="w-[1px] h-10 bg-slate-200 dark:bg-slate-800"></div>
+                <button onClick={() => { if(confirm('删除后无法找回，确认废弃？')){ onDeletePrompt(activePromptId!); setActivePromptId(null); }}} className="w-12 h-12 flex items-center justify-center text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-2xl transition-all"><svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
              </div>
           </div>
 
-          {/* 编辑中心 */}
-          <div className="flex-1 overflow-y-auto pt-24 pb-60 custom-scrollbar scroll-smooth">
-            <div className="max-w-4xl mx-auto px-10">
+          {/* Main Workspace */}
+          <div className="flex-1 overflow-y-auto pt-28 pb-72 custom-scrollbar scroll-smooth">
+            <div className="max-w-5xl mx-auto px-12">
                <input 
-                 className="w-full bg-transparent text-6xl md:text-8xl font-black mb-16 focus:outline-none placeholder:opacity-5 dark:text-white tracking-tighter caret-blue-500"
-                 placeholder="给剧本起个震撼的名字..."
+                 className="w-full bg-transparent text-7xl md:text-9xl font-black mb-20 focus:outline-none placeholder:opacity-5 dark:text-white tracking-tighter caret-blue-500 leading-none"
+                 placeholder="Untitled Story..."
                  value={localTopic}
                  onChange={e => setLocalTopic(e.target.value)}
                  autoFocus
                />
+               
+               {/* Content Area */}
                <div 
                  ref={editorRef}
                  contentEditable
                  onKeyDown={handleKeyDown}
-                 className="w-full min-h-[800px] bg-transparent text-2xl leading-[1.8] focus:outline-none outline-none prose prose-2xl dark:prose-invert max-w-none pb-40 selection:bg-blue-100 dark:selection:bg-blue-900/50"
-                 placeholder="输入 '/' 唤起快捷组件，选中文本开启沉浸式样式调节..."
+                 className="w-full min-h-[1000px] bg-transparent text-2xl leading-[1.8] focus:outline-none outline-none prose prose-2xl dark:prose-invert max-w-none pb-60 selection:bg-blue-100 dark:selection:bg-blue-900/50"
+                 placeholder="输入 '/' 唤起排版菜单，或选中文本精调样式..."
                />
             </div>
           </div>
         </div>
       )}
 
-      {/* Slash Command 菜单 (仅编辑模式) */}
+      {/* Slash Menu (编辑器中显示) */}
       {isEditing && slashMenu && (
         <div 
-          className="fixed z-[160] w-72 p-2 rounded-2xl border shadow-2xl animate-popIn bg-white dark:bg-slate-800 dark:border-slate-700"
+          className="fixed z-[160] w-80 p-3 rounded-[1.5rem] border shadow-[0_30px_90px_rgba(0,0,0,0.4)] animate-popIn bg-white dark:bg-slate-900 dark:border-slate-800"
           style={{ top: slashMenu.y, left: slashMenu.x }}
           onMouseDown={e => e.preventDefault()}
         >
-          <div className="text-[10px] font-black uppercase text-slate-400 p-2 tracking-widest border-b dark:border-slate-700 mb-2">快速插入</div>
+          <div className="text-[10px] font-black uppercase text-slate-400 p-3 tracking-widest border-b dark:border-slate-800 mb-2">快速插入组件</div>
           {[
-            { cmd: 'formatBlock', val: 'H1', icon: 'H1', title: '大标题', desc: '最重要的章节标题' },
-            { cmd: 'formatBlock', val: 'H2', icon: 'H2', title: '二级标题', desc: '子场景或节点' },
-            { cmd: 'insertUnorderedList', val: undefined, icon: '●', title: '动作列表', desc: '描述具体镜头画面' },
-            { cmd: 'insertHorizontalRule', val: undefined, icon: '—', title: '分割线', desc: '用于区分转场' },
+            { cmd: 'formatBlock', val: 'H1', icon: 'H1', title: '大标题', desc: '场景或核心章节' },
+            { cmd: 'formatBlock', val: 'H2', icon: 'H2', title: '二级标题', desc: '次要节点或备注' },
+            { cmd: 'insertUnorderedList', val: undefined, icon: '●', title: '项目列表', desc: '用于记录拍摄要点' },
+            { cmd: 'insertHorizontalRule', val: undefined, icon: '—', title: '分割线', desc: '剧本转场标记' },
           ].map(item => (
-            <button key={item.title} onClick={() => exec(item.cmd, item.val)} className="w-full text-left p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-4 group transition-all">
-               <span className="w-12 h-12 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-900 text-xs font-black group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">{item.icon}</span>
+            <button key={item.title} onClick={() => exec(item.cmd, item.val)} className="w-full text-left p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-5 group transition-all">
+               <span className="w-14 h-14 flex items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-950 text-xs font-black group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">{item.icon}</span>
                <div className="flex flex-col">
-                 <span className="text-sm font-black">{item.title}</span>
-                 <span className="text-[10px] opacity-40">{item.desc}</span>
+                 <span className="text-base font-black tracking-tight">{item.title}</span>
+                 <span className="text-[10px] opacity-40 uppercase tracking-widest">{item.desc}</span>
                </div>
             </button>
           ))}
