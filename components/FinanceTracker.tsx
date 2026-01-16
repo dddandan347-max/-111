@@ -86,7 +86,6 @@ export const FinanceTracker: React.FC<FinanceProps> = ({
 
   return (
     <div className="space-y-10 animate-fadeIn pb-24">
-      {/* 顶部标题栏 */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
         <div>
             <h2 className={`text-5xl font-black tracking-tighter ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
@@ -114,7 +113,6 @@ export const FinanceTracker: React.FC<FinanceProps> = ({
         </div>
       </div>
 
-      {/* 数据汇总卡片 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {[
             { label: '总收入累计', val: totals.income, color: 'text-emerald-400', bg: 'from-emerald-500/10 to-transparent' },
@@ -131,15 +129,14 @@ export const FinanceTracker: React.FC<FinanceProps> = ({
           ))}
       </div>
 
-      {/* 图表与录入表单 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* 图表区 - 移除灰色背景块 */}
-          <div className={`lg:col-span-2 p-8 rounded-[3rem] border flex flex-col transition-all ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-mochi-border shadow-mochi'}`}>
+          {/* 修正图表容器：提供明确高度并使用 minWidth(0) 解决 Recharts 宽度计算问题 */}
+          <div className={`lg:col-span-2 p-8 rounded-[3rem] border flex flex-col transition-all min-w-0 ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-mochi-border shadow-mochi'}`}>
               <div className="flex justify-between items-center mb-8">
                 <h3 className={`text-xs font-black uppercase tracking-widest ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>收支趋势分析</h3>
               </div>
-              <div className="flex-1 min-h-[350px]">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="w-full h-[400px] relative">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                     <BarChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#1e293b' : '#F2E8DF'} vertical={false} />
                         <XAxis dataKey="name" stroke="#64748b" fontSize={10} axisLine={false} tickLine={false} />
@@ -162,7 +159,6 @@ export const FinanceTracker: React.FC<FinanceProps> = ({
               </div>
           </div>
 
-          {/* 录入表单 - 优化层级 */}
           <div className={`p-8 rounded-[3rem] border transition-all ${theme === 'dark' ? 'bg-slate-900 border-slate-800 shadow-2xl' : 'bg-white border-mochi-border shadow-mochi'}`}>
               <h3 className={`text-xl font-black mb-8 ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>新增记账记录</h3>
               <form onSubmit={addTransaction} className="space-y-5">
@@ -207,7 +203,6 @@ export const FinanceTracker: React.FC<FinanceProps> = ({
           </div>
       </div>
 
-      {/* 成员月度报表 - 优化列表视觉 */}
       <div className={`p-10 rounded-[3rem] border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-mochi-border shadow-mochi'}`}>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
               <h3 className={`text-2xl font-black ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>成员月度结算报表 ({date.substring(0, 7)})</h3>
@@ -240,7 +235,6 @@ export const FinanceTracker: React.FC<FinanceProps> = ({
           </div>
       </div>
 
-      {/* 流水列表 - 彻底重写 Hover 逻辑 */}
       <div className={`rounded-[3rem] border overflow-hidden transition-all duration-500 ${theme === 'dark' ? 'bg-slate-900 border-slate-800 shadow-2xl' : 'bg-white border-mochi-border shadow-mochi'}`}>
           <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
@@ -261,7 +255,6 @@ export const FinanceTracker: React.FC<FinanceProps> = ({
                                 : 'hover:bg-[#fdf9f4] text-slate-700'
                           }`}>
                               <td className="px-8 py-6 text-xs font-black opacity-40 font-mono">
-                                  {/* 侧边高亮条 */}
                                   <div className={`absolute left-0 top-0 bottom-0 w-1 transition-all scale-y-0 group-hover:scale-y-100 ${t.type === 'income' ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
                                   {t.date}
                               </td>

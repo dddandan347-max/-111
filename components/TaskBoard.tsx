@@ -53,7 +53,10 @@ const TaskItemMobile: React.FC<{
           <h3 className={`text-lg font-black ${theme === 'dark' ? 'text-white' : 'text-slate-800'} ${task.status === 'Done' ? 'line-through opacity-40' : ''}`}>
             {task.title}
           </h3>
-          {task.tag && <span className="text-[10px] opacity-40 font-bold">#{task.tag}</span>}
+          <div className="flex gap-2 items-center mt-1">
+            {task.tag && <span className="text-[10px] opacity-40 font-bold">#{task.tag}</span>}
+            <span className="text-[10px] opacity-30 font-mono">始于 {task.startDate}</span>
+          </div>
         </div>
         <button onClick={() => onDeleteTask(task.id)} className="p-2 text-rose-500">
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
@@ -90,11 +93,20 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
 }) => {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [viewTab, setViewTab] = useState<'active' | 'done' | 'calendar'>('active');
-  const [calendarDate, setCalendarDate] = useState(new Date());
   const theme = document.documentElement.className.includes('light') ? 'light' : 'dark';
 
-  const activeTasks = tasks.filter(t => t.status !== 'Done');
-  const doneTasks = tasks.filter(t => t.status === 'Done');
+  // 核心逻辑：按开始时间排序并分类
+  const sortedTasks = useMemo(() => {
+    return [...tasks].sort((a, b) => {
+        // 使用开始时间排序，较新的排在上面
+        const dateA = new Date(a.startDate).getTime();
+        const dateB = new Date(b.startDate).getTime();
+        return dateB - dateA;
+    });
+  }, [tasks]);
+
+  const activeTasks = useMemo(() => sortedTasks.filter(t => t.status !== 'Done'), [sortedTasks]);
+  const doneTasks = useMemo(() => sortedTasks.filter(t => t.status === 'Done'), [sortedTasks]);
 
   const getStatusColor = (statusId: string) => {
       const s = statuses.find(x => x.id === statusId);
@@ -182,7 +194,6 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
         ))}
       </div>
 
-      {/* PC Table View - Hide on Mobile */}
       <div className={`hidden lg:block rounded-[2.5rem] border overflow-hidden transition-all duration-500 ${
           theme === 'dark' ? 'bg-slate-900 border-slate-800 shadow-2xl' : 'bg-white/60 border-mochi-border shadow-mochi'
       }`}>
@@ -196,6 +207,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
                   <th className="px-4 py-6">状态</th>
                   <th className="px-4 py-6">内容</th>
                   <th className="px-4 py-6">负责人</th>
+                  <th className="px-4 py-6">开始日期</th>
                   <th className="px-4 py-6">截止</th>
                   <th className="px-4 py-6 text-center">操作</th>
                 </tr>
@@ -221,6 +233,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
                     </td>
                     <td className="px-4 py-5 font-black">{task.title}</td>
                     <td className="px-4 py-5 text-xs font-black opacity-60">{task.assignee || '未认领'}</td>
+                    <td className="px-4 py-5 text-xs font-mono opacity-50">{task.startDate}</td>
                     <td className="px-4 py-5 text-xs font-mono">{task.deadline}</td>
                     <td className="px-4 py-5 text-center">
                       <button onClick={() => onDeleteTask(task.id)} className="text-rose-500 p-2"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
