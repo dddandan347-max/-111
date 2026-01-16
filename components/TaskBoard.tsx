@@ -112,7 +112,6 @@ const TaskRow: React.FC<{
                         <div className="flex items-center gap-2">
                           <input 
                               type="text" 
-                              list={`tags-${task.id}`}
                               value={localTag} 
                               placeholder="# 添加标签"
                               onChange={(e) => setLocalTag(e.target.value)} 

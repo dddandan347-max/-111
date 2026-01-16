@@ -26,6 +26,7 @@ export interface Transaction {
   type: 'income' | 'expense';
   date: string;
   category: string;
+  operator: string; // 记录经手人/用户
   linkedTaskId?: string;
   notes?: string;
 }
@@ -54,7 +55,6 @@ export interface AssetItem {
   type: 'image' | 'reference';
 }
 
-// Added missing Character interface
 export interface Character {
   id: string;
   name: string;

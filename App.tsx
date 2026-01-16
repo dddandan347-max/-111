@@ -118,6 +118,7 @@ export default function App() {
   };
 
   const renderContent = () => {
+    const userList = users.map(u => u.username);
     switch (currentView) {
       case 'tasks':
         return <TaskBoard 
@@ -132,7 +133,15 @@ export default function App() {
             onUpdateTags={handleUpdateTags}
         />;
       case 'finance':
-        return <FinanceTracker transactions={transactions} onAddTransaction={async(t)=>{await supabase.from('transactions').insert({id:t.id, description:t.description, amount:t.amount, type:t.type, date:t.date, category:t.category, linked_task_id:t.linkedTaskId, notes:t.notes}); fetchData();}} onDeleteTransaction={async(id)=>{await supabase.from('transactions').delete().eq('id', id); fetchData();}} tasks={tasks} categories={financeCategories} onUpdateCategories={async(c) => { setFinanceCategories(c); await supabase.from('app_settings').upsert({key:'finance_categories', value:c}); }} />;
+        return <FinanceTracker 
+          transactions={transactions} 
+          onAddTransaction={async(t)=>{await supabase.from('transactions').insert({id:t.id, description:t.description, amount:t.amount, type:t.type, date:t.date, category:t.category, operator: t.operator, linked_task_id:t.linkedTaskId, notes:t.notes}); fetchData();}} 
+          onDeleteTransaction={async(id)=>{await supabase.from('transactions').delete().eq('id', id); fetchData();}} 
+          tasks={tasks} 
+          categories={financeCategories} 
+          users={userList} // 注入用户列表
+          onUpdateCategories={async(c) => { setFinanceCategories(c); await supabase.from('app_settings').upsert({key:'finance_categories', value:c}); }} 
+        />;
       case 'prompts':
         return <PromptLibrary prompts={prompts} onAddPrompt={async(p)=>{await supabase.from('prompts').upsert({id:p.id, title:p.title, content:p.content, tags:p.tags, created_at:p.createdAt}); fetchData();}} onDeletePrompt={(id) => { supabase.from('prompts').delete().eq('id', id).then(()=>fetchData()) }} />;
       case 'documents':

@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Transaction, VideoTask } from '../types';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Cell } from 'recharts';
 
 interface FinanceProps {
   transactions: Transaction[];
@@ -10,24 +10,42 @@ interface FinanceProps {
   tasks: VideoTask[];
   categories: string[];
   onUpdateCategories: (c: string[]) => void;
+  users: string[]; 
 }
 
 type SettlePeriod = 'day' | 'month' | 'year';
 
-export const FinanceTracker: React.FC<FinanceProps> = ({ transactions, onAddTransaction, onDeleteTransaction, tasks, categories, onUpdateCategories }) => {
+export const FinanceTracker: React.FC<FinanceProps> = ({ 
+  transactions, onAddTransaction, onDeleteTransaction, tasks, categories, onUpdateCategories, users 
+}) => {
   const [settlePeriod, setSettlePeriod] = useState<SettlePeriod>('month');
   const theme = document.documentElement.className.includes('light') ? 'light' : 'dark';
 
-  // Input State
   const [desc, setDesc] = useState('');
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [category, setCategory] = useState(categories[0] || '');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [operator, setOperator] = useState('');
+
+  const userStats = useMemo(() => {
+    const currentMonth = date.substring(0, 7);
+    const stats: Record<string, { income: number, expense: number }> = {};
+    
+    users.forEach(u => stats[u] = { income: 0, expense: 0 });
+    
+    transactions.forEach(t => {
+      if (t.date.startsWith(currentMonth)) {
+        if (!stats[t.operator]) stats[t.operator] = { income: 0, expense: 0 };
+        if (t.type === 'income') stats[t.operator].income += t.amount;
+        else stats[t.operator].expense += t.amount;
+      }
+    });
+    return Object.entries(stats).filter(([_, val]) => val.income > 0 || val.expense > 0);
+  }, [transactions, date, users]);
 
   const trendData = useMemo(() => {
     const map = new Map<string, {name: string, income: number, expense: number}>();
-    
     transactions.forEach(t => {
         let key = '';
         if (settlePeriod === 'day') key = t.date;
@@ -39,10 +57,7 @@ export const FinanceTracker: React.FC<FinanceProps> = ({ transactions, onAddTran
         if (t.type === 'income') entry.income += t.amount;
         else entry.expense += t.amount;
     });
-
-    const sorted = Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
-    if (settlePeriod === 'day') return sorted.slice(-30);
-    return sorted;
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name)).slice(-12);
   }, [transactions, settlePeriod]);
 
   const totals = useMemo(() => {
@@ -55,187 +70,231 @@ export const FinanceTracker: React.FC<FinanceProps> = ({ transactions, onAddTran
 
   const addTransaction = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!desc || !amount) return;
+    if (!desc || !amount || !operator) return alert("请填写完整信息，包括经手人");
     onAddTransaction({
       id: Date.now().toString(),
       description: desc,
       amount: parseFloat(amount),
       type,
       date,
-      category
+      category,
+      operator
     });
     setDesc('');
     setAmount('');
   };
 
   return (
-    <div className="space-y-10 animate-fadeIn pb-20">
+    <div className="space-y-10 animate-fadeIn pb-24">
+      {/* 顶部标题栏 */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
         <div>
-            <h2 className={`text-4xl font-black tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
-              收支明细 🧾
+            <h2 className={`text-5xl font-black tracking-tighter ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
+              财务看板 <span className="text-3xl opacity-50">￥</span>
             </h2>
-            <p className={`text-sm mt-2 font-bold opacity-60 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-500'}`}>
-              清晰透明地追踪团队每一分钱的去向
+            <p className={`text-sm mt-3 font-bold ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>
+              实时收支流水与成员月度结算报表
             </p>
         </div>
         
-        <div className={`flex p-1.5 rounded-[1.5rem] border transition-all ${theme === 'dark' ? 'bg-slate-900 border-slate-800 shadow-lg' : 'bg-white border-mochi-border shadow-mochi-sm'}`}>
+        <div className={`flex p-1.5 rounded-2xl border transition-all ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-mochi-border shadow-mochi-sm'}`}>
             {(['day', 'month', 'year'] as const).map(p => (
-                <button
-                    key={p}
-                    onClick={() => setSettlePeriod(p)}
-                    className={`px-5 py-2.5 text-xs font-black rounded-[1rem] transition-all ${
-                      settlePeriod === p 
-                        ? (theme === 'dark' ? 'bg-blue-600 text-white' : 'bg-mochi-pink text-white shadow-mochi-sm') 
-                        : 'text-slate-400 hover:text-rose-400'
-                    }`}
+                <button 
+                  key={p} 
+                  onClick={() => setSettlePeriod(p)} 
+                  className={`px-6 py-2.5 text-[11px] font-black rounded-xl transition-all ${
+                    settlePeriod === p 
+                    ? (theme === 'dark' ? 'bg-blue-600 text-white shadow-lg' : 'bg-rose-400 text-white shadow-mochi-sm') 
+                    : 'text-slate-500 hover:text-rose-400'
+                  }`}
                 >
-                    {p === 'day' ? '日结' : p === 'month' ? '月结' : '年结'}
+                    {p === 'day' ? '按日' : p === 'month' ? '按月' : '按年'}
                 </button>
             ))}
         </div>
       </div>
 
+      {/* 数据汇总卡片 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {[
-            { label: '累计总收入', val: totals.income, color: 'text-emerald-500', bg: theme === 'dark' ? 'hover:border-emerald-500/30' : 'hover:border-emerald-200' },
-            { label: '累计总支出', val: totals.expense, color: 'text-rose-500', bg: theme === 'dark' ? 'hover:border-rose-500/30' : 'hover:border-rose-200' },
-            { label: '当前净利润', val: totals.income - totals.expense, color: (totals.income - totals.expense >= 0 ? 'text-blue-500' : 'text-rose-600'), bg: theme === 'dark' ? 'hover:border-blue-500/30' : 'hover:border-blue-200' }
+            { label: '总收入累计', val: totals.income, color: 'text-emerald-400', bg: 'from-emerald-500/10 to-transparent' },
+            { label: '总支出累计', val: totals.expense, color: 'text-rose-400', bg: 'from-rose-500/10 to-transparent' },
+            { label: '预计净利润', val: totals.income - totals.expense, color: 'text-blue-400', bg: 'from-blue-500/10 to-transparent' }
           ].map((card, i) => (
-            <div key={i} className={`group transition-all duration-500 hover:-translate-y-2 border rounded-[2.5rem] p-8 ${
-              theme === 'dark' ? 'bg-slate-900 border-slate-800 shadow-xl' : 'bg-white border-mochi-border shadow-mochi'
-            } ${card.bg}`}>
-                <div className="text-[10px] font-black uppercase tracking-[0.2em] mb-3 opacity-40">{card.label}</div>
-                <div className={`text-4xl font-black font-mono transition-transform duration-500 group-hover:scale-105 ${card.color}`}>
-                  ¥{card.val.toLocaleString()}
+            <div key={i} className={`relative overflow-hidden border rounded-[2.5rem] p-8 transition-all hover:scale-[1.02] ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-mochi-border shadow-mochi'}`}>
+                <div className={`absolute inset-0 bg-gradient-to-br ${card.bg} opacity-20`}></div>
+                <div className="relative z-10">
+                  <div className="text-[10px] font-black uppercase tracking-[0.2em] mb-3 opacity-40">{card.label}</div>
+                  <div className={`text-4xl font-black font-mono ${card.color}`}>¥{card.val.toLocaleString()}</div>
                 </div>
             </div>
           ))}
       </div>
 
+      {/* 图表与录入表单 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className={`lg:col-span-2 p-8 rounded-[2.5rem] border h-[450px] transition-all ${
-            theme === 'dark' ? 'bg-slate-900 border-slate-800 shadow-xl' : 'bg-white border-mochi-border shadow-mochi'
-          }`}>
-              <h3 className="text-xs font-black dark:text-slate-400 text-slate-500 mb-10 uppercase tracking-widest flex items-center gap-3">
-                  <div className={`w-3 h-3 rounded-full animate-ping ${theme === 'dark' ? 'bg-blue-500' : 'bg-rose-400'}`}></div>
-                  收支趋势分析
-              </h3>
-              <ResponsiveContainer width="100%" height="80%">
-                  <BarChart data={trendData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#1e293b' : '#F2E8DF'} vertical={false} />
-                      <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} axisLine={false} tickLine={false} />
-                      <YAxis stroke="#94a3b8" fontSize={10} axisLine={false} tickLine={false} />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: theme === 'dark' ? '#1e293b' : 'white', 
-                          borderColor: theme === 'dark' ? '#334155' : '#F2E8DF', 
-                          borderRadius: '20px', 
-                          boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
-                          border: 'none',
-                          padding: '12px'
-                        }}
-                        itemStyle={{ fontSize: '11px', fontWeight: '900', textTransform: 'uppercase' }}
-                        cursor={{ fill: theme === 'dark' ? '#1e293b' : '#FFFDF5', opacity: 0.5 }}
-                      />
-                      <Legend iconType="circle" verticalAlign="top" align="right" wrapperStyle={{ paddingBottom: '30px', fontSize: '10px', fontWeight: '900', textTransform: 'uppercase' }} />
-                      <Bar dataKey="income" name="收入" fill={theme === 'dark' ? '#10b981' : '#10b981'} radius={[8, 8, 0, 0]} barSize={24} />
-                      <Bar dataKey="expense" name="支出" fill={theme === 'dark' ? '#f43f5e' : '#f43f5e'} radius={[8, 8, 0, 0]} barSize={24} />
-                  </BarChart>
-              </ResponsiveContainer>
+          {/* 图表区 - 移除灰色背景块 */}
+          <div className={`lg:col-span-2 p-8 rounded-[3rem] border flex flex-col transition-all ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-mochi-border shadow-mochi'}`}>
+              <div className="flex justify-between items-center mb-8">
+                <h3 className={`text-xs font-black uppercase tracking-widest ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>收支趋势分析</h3>
+              </div>
+              <div className="flex-1 min-h-[350px]">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#1e293b' : '#F2E8DF'} vertical={false} />
+                        <XAxis dataKey="name" stroke="#64748b" fontSize={10} axisLine={false} tickLine={false} />
+                        <YAxis stroke="#64748b" fontSize={10} axisLine={false} tickLine={false} />
+                        <Tooltip 
+                          cursor={{ fill: theme === 'dark' ? '#1e293b' : '#FDFBF7', opacity: 0.4 }}
+                          contentStyle={{ 
+                            backgroundColor: theme === 'dark' ? '#0f172a' : 'white', 
+                            borderRadius: '20px', 
+                            border: theme === 'dark' ? '1px solid #334155' : '1px solid #F2E8DF',
+                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+                          }}
+                          itemStyle={{ fontSize: '11px', fontWeight: '900' }}
+                        />
+                        <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: '900', paddingTop: '20px' }} />
+                        <Bar dataKey="income" name="收入" fill="#10b981" radius={[6, 6, 0, 0]} barSize={32} />
+                        <Bar dataKey="expense" name="支出" fill="#f43f5e" radius={[6, 6, 0, 0]} barSize={32} />
+                    </BarChart>
+                </ResponsiveContainer>
+              </div>
           </div>
 
-          <div className={`p-8 rounded-[2.5rem] border transition-all ${
-            theme === 'dark' ? 'bg-slate-900 border-slate-800 shadow-xl' : 'bg-white border-mochi-border shadow-mochi'
-          }`}>
-              <div className="flex items-center gap-3 mb-8">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg ${theme === 'dark' ? 'bg-blue-600' : 'bg-mochi-pink shadow-mochi-sm'}`}>
-                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                  </div>
-                  <h3 className="text-xl font-black dark:text-white text-slate-800">记账</h3>
-              </div>
+          {/* 录入表单 - 优化层级 */}
+          <div className={`p-8 rounded-[3rem] border transition-all ${theme === 'dark' ? 'bg-slate-900 border-slate-800 shadow-2xl' : 'bg-white border-mochi-border shadow-mochi'}`}>
+              <h3 className={`text-xl font-black mb-8 ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>新增记账记录</h3>
               <form onSubmit={addTransaction} className="space-y-5">
-                  <div className={`grid grid-cols-2 gap-2 p-2 rounded-2xl border transition-all ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-mochi-bg border-mochi-border shadow-inner'}`}>
-                      <button type="button" onClick={() => setType('expense')} className={`py-2.5 text-xs font-black rounded-xl transition-all ${type === 'expense' ? 'bg-rose-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}>支出</button>
-                      <button type="button" onClick={() => setType('income')} className={`py-2.5 text-xs font-black rounded-xl transition-all ${type === 'income' ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}>收入</button>
+                  <div className={`grid grid-cols-2 gap-1.5 p-1.5 rounded-2xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-mochi-bg border-mochi-border'}`}>
+                      <button type="button" onClick={() => setType('expense')} className={`py-3 text-[11px] font-black rounded-xl transition-all ${type === 'expense' ? 'bg-rose-500 text-white shadow-lg' : 'text-slate-500 hover:text-rose-400'}`}>支出项目</button>
+                      <button type="button" onClick={() => setType('income')} className={`py-3 text-[11px] font-black rounded-xl transition-all ${type === 'income' ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-500 hover:text-emerald-400'}`}>收入项目</button>
                   </div>
+                  
                   <div className="space-y-1.5">
-                      <label className="text-[10px] text-slate-400 uppercase font-black px-2 tracking-widest">金额</label>
-                      <input type="number" placeholder="0.00" className={`w-full rounded-2xl px-5 py-4 font-black transition-all font-mono outline-none border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white focus:border-blue-500' : 'bg-white border-mochi-border text-slate-800 focus:border-rose-300 focus:shadow-mochi-sm'}`} value={amount} onChange={e => setAmount(e.target.value)} required />
+                    <label className="text-[10px] font-black opacity-40 uppercase tracking-widest ml-1">金额 (RMB)</label>
+                    <input type="number" placeholder="0.00" className={`w-full rounded-2xl px-5 py-4 border font-black outline-none transition-all ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white focus:border-blue-500' : 'bg-mochi-bg border-mochi-border focus:border-rose-300'}`} value={amount} onChange={e => setAmount(e.target.value)} required />
                   </div>
+
                   <div className="space-y-1.5">
-                      <label className="text-[10px] text-slate-400 uppercase font-black px-2 tracking-widest">描述</label>
-                      <input type="text" placeholder="干嘛用了？" className={`w-full rounded-2xl px-5 py-4 font-bold transition-all outline-none border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white focus:border-blue-500' : 'bg-white border-mochi-border text-slate-800 focus:border-rose-300 focus:shadow-mochi-sm'}`} value={desc} onChange={e => setDesc(e.target.value)} required />
+                    <label className="text-[10px] font-black opacity-40 uppercase tracking-widest ml-1">账目描述</label>
+                    <input type="text" placeholder="描述这笔钱的用途..." className={`w-full rounded-2xl px-5 py-4 border font-bold outline-none transition-all ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white focus:border-blue-500' : 'bg-mochi-bg border-mochi-border focus:border-rose-300'}`} value={desc} onChange={e => setDesc(e.target.value)} required />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black opacity-40 uppercase tracking-widest ml-1">经手负责人</label>
+                    <select className={`w-full rounded-2xl px-5 py-4 border font-black outline-none transition-all ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white focus:border-blue-500' : 'bg-mochi-bg border-mochi-border text-slate-700'}`} value={operator} onChange={e => setOperator(e.target.value)} required>
+                        <option value="">点击选择成员...</option>
+                        {users.map(u => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
-                          <label className="text-[10px] text-slate-400 uppercase font-black px-2 tracking-widest">分类</label>
-                          <select className={`w-full rounded-2xl px-4 py-4 font-bold outline-none border transition-all ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white focus:border-blue-500' : 'bg-white border-mochi-border text-slate-800 focus:border-rose-300'}`} value={category} onChange={e => setCategory(e.target.value)}>
-                              {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                          </select>
+                        <select className={`w-full rounded-2xl px-4 py-4 border font-bold text-xs outline-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-mochi-bg border-mochi-border text-slate-700'}`} value={category} onChange={e => setCategory(e.target.value)}>
+                            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
                       </div>
                       <div className="space-y-1.5">
-                          <label className="text-[10px] text-slate-400 uppercase font-black px-2 tracking-widest">日期</label>
-                          <input type="date" className={`w-full rounded-2xl px-4 py-4 font-bold outline-none border transition-all ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white focus:border-blue-500' : 'bg-white border-mochi-border text-slate-800 focus:border-rose-300'}`} value={date} onChange={e => setDate(e.target.value)} />
+                        <input type="date" className={`w-full rounded-2xl px-4 py-4 border font-bold text-xs outline-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-mochi-bg border-mochi-border text-slate-700'}`} value={date} onChange={e => setDate(e.target.value)} />
                       </div>
                   </div>
-                  <button type="submit" className={`w-full py-5 rounded-[1.5rem] font-black text-sm tracking-widest uppercase transition-all active:scale-95 mt-4 shadow-lg ${theme === 'dark' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-mochi-pink hover:bg-rose-400 text-white shadow-mochi-sm'}`}>提交入账</button>
+                  
+                  <button type="submit" className={`w-full py-5 rounded-[1.5rem] font-black text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all mt-4 ${theme === 'dark' ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/40' : 'bg-mochi-pink hover:bg-rose-400 text-white shadow-mochi-sm'}`}>
+                    确认入账
+                  </button>
               </form>
           </div>
       </div>
 
-      <div className={`rounded-[2.5rem] border overflow-hidden transition-all duration-500 ${
-        theme === 'dark' ? 'bg-slate-900 border-slate-800 shadow-xl' : 'bg-white/60 border-mochi-border shadow-mochi'
-      }`}>
-          <div className={`px-8 py-6 border-b flex justify-between items-center transition-colors ${theme === 'dark' ? 'bg-slate-800/50 border-slate-800' : 'bg-mochi-mint/30 border-mochi-border'}`}>
-              <h3 className="text-xs font-black dark:text-white text-slate-700 uppercase tracking-widest">流水审计</h3>
-              <div className="w-10 h-2 bg-rose-200 rounded-full opacity-50"></div>
+      {/* 成员月度报表 - 优化列表视觉 */}
+      <div className={`p-10 rounded-[3rem] border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-mochi-border shadow-mochi'}`}>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
+              <h3 className={`text-2xl font-black ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>成员月度结算报表 ({date.substring(0, 7)})</h3>
+              <div className="px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest bg-slate-800/40 text-slate-500 border border-slate-800">
+                结算范围: {date.substring(0, 7)}
+              </div>
           </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {userStats.map(([user, data]) => (
+                  <div key={user} className={`p-6 rounded-[2rem] border transition-all hover:translate-y-[-4px] ${theme === 'dark' ? 'bg-slate-800/40 border-slate-700 hover:bg-slate-800' : 'bg-mochi-bg border-mochi-border hover:shadow-mochi-sm'}`}>
+                      <div className="flex items-center gap-3 mb-5">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black shadow-lg ${theme === 'dark' ? 'bg-blue-600 text-white' : 'bg-mochi-pink text-mochi-text'}`}>
+                            {user.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="font-black text-base">{user}</span>
+                      </div>
+                      <div className="space-y-2 text-xs font-bold">
+                          <div className="flex justify-between opacity-60"><span>收入贡献:</span><span className="text-emerald-500">¥{data.income.toLocaleString()}</span></div>
+                          <div className="flex justify-between opacity-60"><span>报销支出:</span><span className="text-rose-500">¥{data.expense.toLocaleString()}</span></div>
+                          <div className={`pt-3 border-t mt-3 flex justify-between ${theme === 'dark' ? 'border-slate-700' : 'border-mochi-border'}`}>
+                            <span className="opacity-90">应结差额:</span>
+                            <span className={`font-black ${data.income - data.expense >= 0 ? 'text-blue-400' : 'text-rose-500'}`}>
+                              ¥{(data.income - data.expense).toLocaleString()}
+                            </span>
+                          </div>
+                      </div>
+                  </div>
+              ))}
+              {userStats.length === 0 && <div className="col-span-full py-16 text-center opacity-20 italic font-black text-sm tracking-widest">本月尚无财务结算数据</div>}
+          </div>
+      </div>
+
+      {/* 流水列表 - 彻底重写 Hover 逻辑 */}
+      <div className={`rounded-[3rem] border overflow-hidden transition-all duration-500 ${theme === 'dark' ? 'bg-slate-900 border-slate-800 shadow-2xl' : 'bg-white border-mochi-border shadow-mochi'}`}>
           <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                   <thead>
-                      <tr className={`text-[10px] font-black uppercase tracking-[0.2em] transition-colors border-b ${theme === 'dark' ? 'bg-slate-900 text-slate-500 border-slate-800' : 'bg-white text-slate-400 border-mochi-border'}`}>
+                      <tr className={`text-[10px] font-black uppercase tracking-[0.2em] border-b transition-colors ${theme === 'dark' ? 'bg-slate-800/40 text-slate-500 border-slate-800' : 'bg-mochi-bg/50 text-slate-400 border-mochi-border'}`}>
                           <th className="px-8 py-6">日期</th>
                           <th className="px-8 py-6">事项描述</th>
-                          <th className="px-8 py-6 text-center">分类</th>
-                          <th className="px-8 py-6 text-right">金额 (¥)</th>
-                          <th className="px-8 py-6 text-center w-24">操作</th>
+                          <th className="px-8 py-6">经手成员</th>
+                          <th className="px-8 py-6 text-right">金额 (RMB)</th>
+                          <th className="px-8 py-6 text-center w-24">管理</th>
                       </tr>
                   </thead>
                   <tbody className={`divide-y transition-colors ${theme === 'dark' ? 'divide-slate-800' : 'divide-mochi-border'}`}>
-                      {transactions.slice(0, 10).map((t, idx) => (
-                          <tr key={t.id} className={`group transition-all duration-300 ${
-                            theme === 'dark' 
-                              ? 'hover:bg-slate-800/40' 
-                              : (idx % 2 === 0 ? 'bg-white/40' : 'bg-mochi-bg/20') + ' hover:bg-white hover:shadow-mochi-sm'
+                      {transactions.map(t => (
+                          <tr key={t.id} className={`group relative transition-all duration-300 ${
+                              theme === 'dark' 
+                                ? 'hover:bg-[#161f31] text-slate-300' 
+                                : 'hover:bg-[#fdf9f4] text-slate-700'
                           }`}>
-                              <td className="px-8 py-5 text-xs font-mono font-black opacity-60">{t.date}</td>
-                              <td className="px-8 py-5">
-                                  <div className="font-black text-sm">{t.description}</div>
+                              <td className="px-8 py-6 text-xs font-black opacity-40 font-mono">
+                                  {/* 侧边高亮条 */}
+                                  <div className={`absolute left-0 top-0 bottom-0 w-1 transition-all scale-y-0 group-hover:scale-y-100 ${t.type === 'income' ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+                                  {t.date}
                               </td>
-                              <td className="px-8 py-5 text-center">
-                                  <span className={`text-[10px] px-3 py-1.5 rounded-xl border font-black uppercase transition-all group-hover:scale-110 ${
-                                    theme === 'dark' 
-                                      ? 'bg-slate-800 text-slate-400 border-slate-700' 
-                                      : 'bg-white text-slate-500 border-mochi-border shadow-sm'
+                              <td className="px-8 py-6 font-black text-sm">{t.description}</td>
+                              <td className="px-8 py-6">
+                                  <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black tracking-wider transition-all border ${
+                                      theme === 'dark' 
+                                        ? 'bg-slate-800/60 text-blue-400 border-slate-700' 
+                                        : 'bg-mochi-pink/20 text-rose-500 border-rose-100'
                                   }`}>
-                                    {t.category}
+                                      {t.operator}
                                   </span>
                               </td>
-                              <td className={`px-8 py-5 text-right font-mono font-black text-base ${t.type === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                  {t.type === 'income' ? '+' : '-'}¥{t.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                              <td className={`px-8 py-6 text-right font-mono font-black text-base ${t.type === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                  {t.type === 'income' ? '+' : '-'}¥{t.amount.toLocaleString()}
                               </td>
-                              <td className="px-8 py-5 text-center">
+                              <td className="px-8 py-6 text-center">
                                   <button 
-                                    onClick={() => onDeleteTransaction(t.id)} 
-                                    className={`p-2.5 rounded-xl transition-all opacity-0 group-hover:opacity-100 ${theme === 'dark' ? 'text-slate-600 hover:text-rose-500 hover:bg-rose-500/10' : 'text-slate-300 hover:text-rose-500 hover:bg-rose-50'}`}
+                                      onClick={() => onDeleteTransaction(t.id)} 
+                                      className={`p-2.5 rounded-xl transition-all opacity-0 group-hover:opacity-100 ${
+                                          theme === 'dark' ? 'text-slate-600 hover:text-rose-500 hover:bg-rose-500/10' : 'text-slate-300 hover:text-rose-500 hover:bg-rose-50'
+                                      }`}
                                   >
-                                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                   </button>
                               </td>
                           </tr>
                       ))}
+                      {transactions.length === 0 && (
+                          <tr>
+                              <td colSpan={5} className="py-32 text-center opacity-20 font-black italic tracking-[0.3em] text-sm">TRANSACTION_EMPTY</td>
+                          </tr>
+                      )}
                   </tbody>
               </table>
           </div>
