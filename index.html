@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>StudioSync</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
     <script>
       tailwind.config = {
         darkMode: 'class',
@@ -72,6 +73,13 @@
         background: rgba(255, 255, 255, 0.7);
         backdrop-filter: blur(10px);
       }
+      /* Notion placeholder effect */
+      [contenteditable]:empty:before {
+        content: attr(placeholder);
+        color: #94a3b8;
+        opacity: 0.5;
+        cursor: text;
+      }
       /* Custom scrollbar */
       ::-webkit-scrollbar {
         width: 6px;
@@ -81,6 +89,10 @@
       .dark ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
       .light ::-webkit-scrollbar-track { background: #F7F1EA; }
       .light ::-webkit-scrollbar-thumb { background: #EBD9C8; border-radius: 10px; }
+      
+      /* Typography optimization */
+      .prose h1 { font-weight: 900; letter-spacing: -0.05em; margin-bottom: 0.5em; }
+      .prose p { margin-bottom: 1em; }
     </style>
   <script type="importmap">
 {
