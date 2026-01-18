@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Transaction, VideoTask } from '../types';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 
 interface FinanceProps {
   transactions: Transaction[];
@@ -130,14 +130,13 @@ export const FinanceTracker: React.FC<FinanceProps> = ({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* 修正图表容器：提供明确高度并使用 minWidth(0) 解决 Recharts 宽度计算问题 */}
-          <div className={`lg:col-span-2 p-8 rounded-[3rem] border flex flex-col transition-all min-w-0 ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-mochi-border shadow-mochi'}`}>
+          <div className={`lg:col-span-2 p-8 rounded-[3rem] border flex flex-col transition-all min-h-[500px] w-full ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-mochi-border shadow-mochi'}`}>
               <div className="flex justify-between items-center mb-8">
                 <h3 className={`text-xs font-black uppercase tracking-widest ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>收支趋势分析</h3>
               </div>
-              <div className="w-full h-[400px] relative">
-                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                    <BarChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <div className="flex-1 w-full min-h-[350px]">
+                <ResponsiveContainer width="100%" height="100%" minHeight={300}>
+                    <BarChart data={trendData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#1e293b' : '#F2E8DF'} vertical={false} />
                         <XAxis dataKey="name" stroke="#64748b" fontSize={10} axisLine={false} tickLine={false} />
                         <YAxis stroke="#64748b" fontSize={10} axisLine={false} tickLine={false} />
@@ -149,7 +148,6 @@ export const FinanceTracker: React.FC<FinanceProps> = ({
                             border: theme === 'dark' ? '1px solid #334155' : '1px solid #F2E8DF',
                             boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
                           }}
-                          itemStyle={{ fontSize: '11px', fontWeight: '900' }}
                         />
                         <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: '900', paddingTop: '20px' }} />
                         <Bar dataKey="income" name="收入" fill="#10b981" radius={[6, 6, 0, 0]} barSize={32} />
