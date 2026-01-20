@@ -88,7 +88,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
       <nav className="flex-1 p-5 overflow-y-auto">
         {navItems.map(item => (
-          /* key is handled by React and does not need to be in NavItemProps */
+          // Fixed type error by ensuring 'key' is handled by React and not passed as a component prop
           <NavItem 
             key={item.view}
             view={item.view} 

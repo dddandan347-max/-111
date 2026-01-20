@@ -25,9 +25,19 @@ export const AssetGallery: React.FC<AssetGalleryProps> = ({
   
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+  const [newFolderIcon, setNewFolderIcon] = useState('📁');
 
   const [editingAssetId, setEditingAssetId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
+
+  // 文件夹编辑状态
+  const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
+  const [folderEditName, setFolderEditName] = useState('');
+  const [folderEditIcon, setFolderEditIcon] = useState('');
+
+  // 拖拽交互状态
+  const [draggedAssetId, setDraggedAssetId] = useState<string | null>(null);
+  const [dropOverFolderId, setDropOverFolderId] = useState<string | null>(null);
 
   const theme = document.documentElement.className.includes('light') ? 'light' : 'dark';
 
@@ -90,9 +100,10 @@ export const AssetGallery: React.FC<AssetGalleryProps> = ({
     onAddFolder({
       id: Date.now().toString(),
       name: newFolderName.trim(),
-      icon: '📁'
+      icon: newFolderIcon.trim() || '📁'
     });
     setNewFolderName('');
+    setNewFolderIcon('📁');
     setShowFolderModal(false);
   };
 
@@ -103,8 +114,33 @@ export const AssetGallery: React.FC<AssetGalleryProps> = ({
     setEditingAssetId(null);
   };
 
-  const handleMoveAsset = (asset: AssetItem, folderId: string) => {
-    onUpdateAsset({ ...asset, folderId });
+  // 文件夹更新逻辑
+  const submitFolderEdit = (folder: AssetFolder) => {
+    if (folderEditName.trim()) {
+      onAddFolder({ ...folder, name: folderEditName.trim(), icon: folderEditIcon.trim() });
+    }
+    setEditingFolderId(null);
+  };
+
+  // 拖拽逻辑实现
+  const handleDragStart = (id: string) => {
+    setDraggedAssetId(id);
+  };
+
+  const handleDragOver = (e: React.DragEvent, folderId: string) => {
+    e.preventDefault();
+    setDropOverFolderId(folderId);
+  };
+
+  const handleDrop = (folderId: string) => {
+    if (draggedAssetId) {
+      const asset = assets.find(a => a.id === draggedAssetId);
+      if (asset && asset.folderId !== folderId) {
+        onUpdateAsset({ ...asset, folderId });
+      }
+    }
+    setDraggedAssetId(null);
+    setDropOverFolderId(null);
   };
 
   return (
@@ -117,6 +153,8 @@ export const AssetGallery: React.FC<AssetGalleryProps> = ({
           <div className="flex flex-wrap gap-2 mt-6">
             <button 
               onClick={() => setActiveFolderId('all')}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => handleDrop('all')}
               className={`px-6 py-2.5 rounded-2xl text-[11px] font-black transition-all border ${
                 activeFolderId === 'all' 
                   ? (theme === 'dark' ? 'bg-blue-600 text-white border-blue-500 shadow-lg' : 'bg-rose-400 text-white border-rose-300 shadow-mochi-sm')
@@ -126,18 +164,45 @@ export const AssetGallery: React.FC<AssetGalleryProps> = ({
               🌈 全部素材
             </button>
             {folders.map(folder => (
-              <div key={folder.id} className="relative group/folder">
-                <button 
-                  onClick={() => setActiveFolderId(folder.id)}
-                  className={`px-6 py-2.5 rounded-2xl text-[11px] font-black transition-all flex items-center gap-2 border ${
-                    activeFolderId === folder.id 
-                      ? (theme === 'dark' ? 'bg-blue-600 text-white border-blue-500 shadow-lg' : 'bg-rose-400 text-white border-rose-300 shadow-mochi-sm')
-                      : (theme === 'dark' ? 'bg-slate-900 text-slate-500 border-slate-800 hover:text-slate-300' : 'bg-white text-slate-400 border-mochi-border hover:shadow-sm')
-                  }`}
-                >
-                  <span>{folder.icon || '📁'}</span>
-                  {folder.name}
-                </button>
+              <div 
+                key={folder.id} 
+                className="relative group/folder"
+                onDragOver={(e) => handleDragOver(e, folder.id)}
+                onDragLeave={() => setDropOverFolderId(null)}
+                onDrop={() => handleDrop(folder.id)}
+              >
+                {editingFolderId === folder.id ? (
+                  <div className={`flex items-center gap-1 px-3 py-1.5 rounded-2xl border ${theme === 'dark' ? 'bg-slate-800 border-blue-500' : 'bg-white border-rose-300 shadow-sm'}`}>
+                    <input className="w-6 bg-transparent text-center" value={folderEditIcon} onChange={e => setFolderEditIcon(e.target.value)} maxLength={2} />
+                    <input 
+                      className="w-20 bg-transparent font-black text-[11px] outline-none" 
+                      value={folderEditName} 
+                      onChange={e => setFolderEditName(e.target.value)}
+                      onBlur={() => submitFolderEdit(folder)}
+                      onKeyDown={e => e.key === 'Enter' && submitFolderEdit(folder)}
+                      autoFocus
+                    />
+                  </div>
+                ) : (
+                  <button 
+                    onClick={() => setActiveFolderId(folder.id)}
+                    onDoubleClick={() => {
+                      setEditingFolderId(folder.id);
+                      setFolderEditName(folder.name);
+                      setFolderEditIcon(folder.icon || '📁');
+                    }}
+                    className={`px-6 py-2.5 rounded-2xl text-[11px] font-black transition-all flex items-center gap-2 border ${
+                      dropOverFolderId === folder.id ? 'scale-110 rotate-2 bg-blue-500/20 ring-2 ring-blue-500' : ''
+                    } ${
+                      activeFolderId === folder.id 
+                        ? (theme === 'dark' ? 'bg-blue-600 text-white border-blue-500 shadow-lg' : 'bg-rose-400 text-white border-rose-300 shadow-mochi-sm')
+                        : (theme === 'dark' ? 'bg-slate-900 text-slate-500 border-slate-800 hover:text-slate-300' : 'bg-white text-slate-400 border-mochi-border hover:shadow-sm')
+                    }`}
+                  >
+                    <span>{folder.icon || '📁'}</span>
+                    {folder.name}
+                  </button>
+                )}
                 <button 
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDeleteFolder(folder.id); }}
                   className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover/folder:opacity-100 transition-opacity shadow-lg z-10"
@@ -163,7 +228,10 @@ export const AssetGallery: React.FC<AssetGalleryProps> = ({
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-slate-950/60 backdrop-blur-sm">
            <div className={`w-full max-w-sm rounded-[2rem] border p-8 space-y-6 animate-popIn ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-mochi-border shadow-2xl'}`}>
               <h3 className="text-xl font-black text-center">新建分类</h3>
-              <input className={`w-full px-5 py-3 rounded-xl border font-bold outline-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-mochi-bg border-mochi-border text-slate-800'}`} placeholder="文件夹名称..." value={newFolderName} onChange={e => setNewFolderName(e.target.value)} autoFocus onKeyDown={e => e.key === 'Enter' && createFolder()} />
+              <div className="flex gap-2">
+                <input className={`w-14 px-2 py-3 rounded-xl border font-bold text-center outline-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-mochi-bg border-mochi-border'}`} value={newFolderIcon} onChange={e => setNewFolderIcon(e.target.value)} maxLength={2} placeholder="图标" />
+                <input className={`flex-1 px-5 py-3 rounded-xl border font-bold outline-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-mochi-bg border-mochi-border text-slate-800'}`} placeholder="文件夹名称..." value={newFolderName} onChange={e => setNewFolderName(e.target.value)} autoFocus onKeyDown={e => e.key === 'Enter' && createFolder()} />
+              </div>
               <div className="flex gap-3">
                 <button onClick={() => setShowFolderModal(false)} className="flex-1 py-3 text-sm font-black opacity-40">取消</button>
                 <button onClick={createFolder} className={`flex-1 py-3 rounded-xl text-sm font-black text-white ${theme === 'dark' ? 'bg-blue-600' : 'bg-rose-400'}`}>创建</button>
@@ -190,8 +258,15 @@ export const AssetGallery: React.FC<AssetGalleryProps> = ({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 pb-32">
         {filteredAssets.map(asset => (
-          <div key={asset.id} className={`group relative aspect-[4/3] rounded-[2.5rem] overflow-hidden border transition-all duration-700 ${theme === 'dark' ? 'bg-slate-900 border-slate-800 hover:border-blue-500 shadow-xl' : 'bg-white border-mochi-border hover:shadow-mochi hover:-translate-y-2'}`}>
-            <img src={asset.dataUrl} alt={asset.name} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" loading="lazy" />
+          <div 
+            key={asset.id} 
+            draggable
+            onDragStart={() => handleDragStart(asset.id)}
+            className={`group relative aspect-[4/3] rounded-[2.5rem] overflow-hidden border transition-all duration-700 ${
+              draggedAssetId === asset.id ? 'opacity-40 scale-95 grayscale' : ''
+            } ${theme === 'dark' ? 'bg-slate-900 border-slate-800 hover:border-blue-500 shadow-xl' : 'bg-white border-mochi-border hover:shadow-mochi hover:-translate-y-2'}`}
+          >
+            <img src={asset.dataUrl} alt={asset.name} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 pointer-events-none" loading="lazy" />
             
             <div className="absolute top-4 right-4 z-[60]">
                 <button 
@@ -214,7 +289,7 @@ export const AssetGallery: React.FC<AssetGalleryProps> = ({
                   <div className="flex items-center gap-2">
                     <select
                       value={asset.folderId || ''}
-                      onChange={(e) => handleMoveAsset(asset, e.target.value)}
+                      onChange={(e) => onUpdateAsset({ ...asset, folderId: e.target.value })}
                       className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg border outline-none cursor-pointer transition-all ${
                         theme === 'dark' 
                           ? 'bg-slate-900/60 border-slate-700 text-blue-400 hover:bg-slate-800' 
@@ -225,6 +300,7 @@ export const AssetGallery: React.FC<AssetGalleryProps> = ({
                         <option key={f.id} value={f.id}>{f.icon} {f.name}</option>
                       ))}
                     </select>
+                    <span className="text-[10px] text-white/50 opacity-0 group-hover:opacity-100 transition-opacity">可拖拽</span>
                   </div>
                   
                   {editingAssetId === asset.id ? (
