@@ -134,8 +134,8 @@ export const FinanceTracker: React.FC<FinanceProps> = ({
               <div className="flex justify-between items-center mb-8">
                 <h3 className={`text-xs font-black uppercase tracking-widest ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>收支趋势分析</h3>
               </div>
-              <div className="flex-1 w-full min-h-[350px]">
-                <ResponsiveContainer width="100%" height="100%" minHeight={300}>
+              <div className="flex-1 w-full min-h-[350px]" style={{ minHeight: '350px' }}>
+                <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={trendData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#1e293b' : '#F2E8DF'} vertical={false} />
                         <XAxis dataKey="name" stroke="#64748b" fontSize={10} axisLine={false} tickLine={false} />

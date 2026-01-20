@@ -139,9 +139,9 @@ export default function App() {
             onDeleteTask={async(id)=>{await supabase.from('tasks').delete().eq('id', id); fetchData();}} 
             currentUser={currentUser} 
             statuses={taskStatuses} 
-            onUpdateStatuses={handleUpdateStatuses}
+            onUpdateStatuses={(s)=>{setTaskStatuses(s); supabase.from('app_settings').upsert({key:'task_statuses', value:s});}}
             tags={taskTags}
-            onUpdateTags={handleUpdateTags}
+            onUpdateTags={(tags)=>{setTaskTags(tags); supabase.from('app_settings').upsert({key:'task_tags', value:tags});}}
         />;
       case 'finance':
         return <FinanceTracker 
@@ -154,7 +154,16 @@ export default function App() {
           onUpdateCategories={async(c) => { setFinanceCategories(c); await supabase.from('app_settings').upsert({key:'finance_categories', value:c}); }} 
         />;
       case 'prompts':
-        return <PromptLibrary prompts={prompts} onAddPrompt={async(p)=>{await supabase.from('prompts').upsert({id:p.id, title:p.title, content:p.content, tags:p.tags, created_at:p.createdAt}); fetchData();}} onDeletePrompt={(id) => { supabase.from('prompts').delete().eq('id', id).then(()=>fetchData()) }} />;
+        return <PromptLibrary prompts={prompts} 
+          onAddPrompt={async(p)=>{
+            await supabase.from('prompts').upsert({id:p.id, title:p.title, content:p.content, tags:p.tags, created_at:p.createdAt}); 
+            fetchData();
+          }} 
+          onDeletePrompt={async(id) => { 
+            await supabase.from('prompts').delete().eq('id', id);
+            fetchData();
+          }} 
+        />;
       case 'documents':
         return <DocumentCenter docs={docs} onAddDoc={async(d)=>{await supabase.from('documents').upsert({id:d.id, title:d.title, content:d.content, category:d.category, updated_at:d.updatedAt, author:d.author}); fetchData();}} onDeleteDoc={async(id)=>{await supabase.from('documents').delete().eq('id', id); fetchData();}} currentUser={currentUser} />;
       case 'assets':
@@ -172,13 +181,14 @@ export default function App() {
             await fetchData();
           }}
           onDeleteAsset={async(id)=>{
-            // 彻底修复：明确 await 并随后刷新状态
-            const { error } = await supabase.from('assets').delete().eq('id', id); 
-            if (error) {
-              console.error("Delete asset error:", error);
-              return;
+            try {
+              const { error } = await supabase.from('assets').delete().eq('id', id); 
+              if (error) throw error;
+              await fetchData();
+            } catch (err) {
+              console.error("Asset deletion failed:", err);
+              alert("删除失败，请检查网络或权限");
             }
-            await fetchData();
           }} 
           onAddFolder={async(f) => {
             const nextFolders = [...assetFolders, f];
@@ -193,21 +203,6 @@ export default function App() {
         />;
       default: return null;
     }
-  };
-
-  const handleUpdateTags = async (newTags: string[]) => {
-    setTaskTags(newTags);
-    await supabase.from('app_settings').upsert({ key: 'task_tags', value: newTags });
-  };
-
-  const handleUpdateStatuses = async (newStatuses: TaskStatusDef[]) => {
-    setTaskStatuses(newStatuses);
-    await supabase.from('app_settings').upsert({ key: 'task_statuses', value: newStatuses });
-  };
-
-  const handleUpdateFolders = async (newFolders: AssetFolder[]) => {
-    setAssetFolders(newFolders);
-    await supabase.from('app_settings').upsert({ key: 'asset_folders', value: newFolders });
   };
 
   const handleLogin = (e: React.FormEvent) => {
