@@ -103,6 +103,10 @@ export const AssetGallery: React.FC<AssetGalleryProps> = ({
     setEditingAssetId(null);
   };
 
+  const handleMoveAsset = (asset: AssetItem, folderId: string) => {
+    onUpdateAsset({ ...asset, folderId });
+  };
+
   return (
     <div className="space-y-10 animate-fadeIn pb-20">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
@@ -189,15 +193,12 @@ export const AssetGallery: React.FC<AssetGalleryProps> = ({
           <div key={asset.id} className={`group relative aspect-[4/3] rounded-[2.5rem] overflow-hidden border transition-all duration-700 ${theme === 'dark' ? 'bg-slate-900 border-slate-800 hover:border-blue-500 shadow-xl' : 'bg-white border-mochi-border hover:shadow-mochi hover:-translate-y-2'}`}>
             <img src={asset.dataUrl} alt={asset.name} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" loading="lazy" />
             
-            {/* 修复：移除 confirm() 避免沙盒阻塞，使用 z-index 确保顶层触发 */}
             <div className="absolute top-4 right-4 z-[60]">
                 <button 
                   type="button"
                   onClick={(e) => { 
                     e.preventDefault();
                     e.stopPropagation();
-                    // 在沙盒模式下，confirm 可能会报错，这里直接触发删除。
-                    // 如果需要确认，未来可以改为自定义 Modal。
                     onDeleteAsset(asset.id);
                   }}
                   className="w-10 h-10 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center transition-all shadow-2xl hover:scale-110 active:scale-90 opacity-0 group-hover:opacity-100"
@@ -208,11 +209,23 @@ export const AssetGallery: React.FC<AssetGalleryProps> = ({
                 </button>
             </div>
 
-            <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none">
-                <div className="flex flex-col pointer-events-auto">
-                  <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1 block">
-                    {folders.find(f => f.id === asset.folderId)?.name || '未分类'}
-                  </span>
+            <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent pointer-events-none">
+                <div className="flex flex-col pointer-events-auto space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={asset.folderId || ''}
+                      onChange={(e) => handleMoveAsset(asset, e.target.value)}
+                      className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg border outline-none cursor-pointer transition-all ${
+                        theme === 'dark' 
+                          ? 'bg-slate-900/60 border-slate-700 text-blue-400 hover:bg-slate-800' 
+                          : 'bg-white/60 border-mochi-border text-rose-400 hover:bg-white'
+                      }`}
+                    >
+                      {folders.map(f => (
+                        <option key={f.id} value={f.id}>{f.icon} {f.name}</option>
+                      ))}
+                    </select>
+                  </div>
                   
                   {editingAssetId === asset.id ? (
                     <input 
