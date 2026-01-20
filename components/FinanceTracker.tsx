@@ -233,62 +233,56 @@ export const FinanceTracker: React.FC<FinanceProps> = ({
           </div>
       </div>
 
-      <div className={`rounded-[3rem] border overflow-hidden transition-all duration-500 ${theme === 'dark' ? 'bg-slate-900 border-slate-800 shadow-2xl' : 'bg-white border-mochi-border shadow-mochi'}`}>
-          <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                  <thead>
-                      <tr className={`text-[10px] font-black uppercase tracking-[0.2em] border-b transition-colors ${theme === 'dark' ? 'bg-slate-800/40 text-slate-500 border-slate-800' : 'bg-mochi-bg/50 text-slate-400 border-mochi-border'}`}>
-                          <th className="px-8 py-6">日期</th>
-                          <th className="px-8 py-6">事项描述</th>
-                          <th className="px-8 py-6">经手成员</th>
-                          <th className="px-8 py-6 text-right">金额 (RMB)</th>
-                          <th className="px-8 py-6 text-center w-24">管理</th>
-                      </tr>
-                  </thead>
-                  <tbody className={`divide-y transition-colors ${theme === 'dark' ? 'divide-slate-800' : 'divide-mochi-border'}`}>
-                      {transactions.map(t => (
-                          <tr key={t.id} className={`group relative transition-all duration-300 ${
-                              theme === 'dark' 
-                                ? 'hover:bg-[#161f31] text-slate-300' 
-                                : 'hover:bg-[#fdf9f4] text-slate-700'
-                          }`}>
-                              <td className="px-8 py-6 text-xs font-black opacity-40 font-mono">
-                                  <div className={`absolute left-0 top-0 bottom-0 w-1 transition-all scale-y-0 group-hover:scale-y-100 ${t.type === 'income' ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
-                                  {t.date}
-                              </td>
-                              <td className="px-8 py-6 font-black text-sm">{t.description}</td>
-                              <td className="px-8 py-6">
-                                  <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black tracking-wider transition-all border ${
-                                      theme === 'dark' 
-                                        ? 'bg-slate-800/60 text-blue-400 border-slate-700' 
-                                        : 'bg-mochi-pink/20 text-rose-500 border-rose-100'
-                                  }`}>
-                                      {t.operator}
-                                  </span>
-                              </td>
-                              <td className={`px-8 py-6 text-right font-mono font-black text-base ${t.type === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                  {t.type === 'income' ? '+' : '-'}¥{t.amount.toLocaleString()}
-                              </td>
-                              <td className="px-8 py-6 text-center">
-                                  <button 
-                                      onClick={() => onDeleteTransaction(t.id)} 
-                                      className={`p-2.5 rounded-xl transition-all opacity-0 group-hover:opacity-100 ${
-                                          theme === 'dark' ? 'text-slate-600 hover:text-rose-500 hover:bg-rose-500/10' : 'text-slate-300 hover:text-rose-500 hover:bg-rose-50'
-                                      }`}
-                                  >
-                                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                  </button>
-                              </td>
-                          </tr>
-                      ))}
-                      {transactions.length === 0 && (
-                          <tr>
-                              <td colSpan={5} className="py-32 text-center opacity-20 font-black italic tracking-[0.3em] text-sm">TRANSACTION_EMPTY</td>
-                          </tr>
-                      )}
-                  </tbody>
-              </table>
-          </div>
+      <div className={`rounded-[2.5rem] border overflow-hidden transition-all duration-500 ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-mochi-border shadow-mochi'}`}>
+        <div className="px-8 py-6 border-b dark:border-slate-800 flex justify-between items-center bg-slate-800/20">
+            <h3 className="font-black text-xs uppercase tracking-widest opacity-50">财务明细流水 (Recent Activity)</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className={`text-[10px] font-black uppercase tracking-[0.2em] ${theme === 'dark' ? 'bg-slate-800 text-slate-500' : 'bg-mochi-mint/50 text-teal-600'}`}>
+                <th className="px-6 py-5">日期</th>
+                <th className="px-6 py-5">描述</th>
+                <th className="px-6 py-5">分类</th>
+                <th className="px-6 py-5">经手人</th>
+                <th className="px-6 py-5">金额</th>
+                <th className="px-6 py-5 text-right">操作</th>
+              </tr>
+            </thead>
+            <tbody className={`divide-y ${theme === 'dark' ? 'divide-slate-800' : 'divide-mochi-border'}`}>
+              {transactions.map(t => (
+                <tr key={t.id} className={`${theme === 'dark' ? 'hover:bg-slate-800/40' : 'hover:bg-white/80'}`}>
+                  <td className="px-6 py-5 text-xs font-mono opacity-60">{t.date}</td>
+                  <td className="px-6 py-5 font-black text-sm">{t.description}</td>
+                  <td className="px-6 py-5">
+                    <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-slate-400' : 'bg-white border-mochi-border text-slate-500'}`}>
+                      {t.category}
+                    </span>
+                  </td>
+                  <td className="px-6 py-5">
+                    <div className="flex items-center gap-2">
+                       <div className={`w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-black ${theme === 'dark' ? 'bg-blue-600 text-white' : 'bg-rose-400 text-white'}`}>{t.operator.charAt(0)}</div>
+                       <span className="text-xs font-black">{t.operator}</span>
+                    </div>
+                  </td>
+                  <td className={`px-6 py-5 font-mono font-black ${t.type === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                    {t.type === 'income' ? '+' : '-'}¥{t.amount.toLocaleString()}
+                  </td>
+                  <td className="px-6 py-5 text-right">
+                    <button onClick={() => onDeleteTransaction(t.id)} className="text-rose-500 p-2 hover:bg-rose-500/10 rounded-xl transition-all">
+                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {transactions.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="py-20 text-center opacity-20 italic font-black uppercase text-xs tracking-widest">暂无流水记录</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

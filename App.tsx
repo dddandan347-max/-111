@@ -128,6 +128,21 @@ export default function App() {
     }
   };
 
+  const handleUpdateTags = async (newTags: string[]) => {
+    setTaskTags(newTags);
+    await supabase.from('app_settings').upsert({ key: 'task_tags', value: newTags });
+  };
+
+  const handleUpdateStatuses = async (newStatuses: TaskStatusDef[]) => {
+    setTaskStatuses(newStatuses);
+    await supabase.from('app_settings').upsert({ key: 'task_statuses', value: newStatuses });
+  };
+
+  const handleUpdateFolders = async (newFolders: AssetFolder[]) => {
+    setAssetFolders(newFolders);
+    await supabase.from('app_settings').upsert({ key: 'asset_folders', value: newFolders });
+  };
+
   const renderContent = () => {
     const userList = users.map(u => u.username);
     switch (currentView) {
@@ -139,9 +154,9 @@ export default function App() {
             onDeleteTask={async(id)=>{await supabase.from('tasks').delete().eq('id', id); fetchData();}} 
             currentUser={currentUser} 
             statuses={taskStatuses} 
-            onUpdateStatuses={(s)=>{setTaskStatuses(s); supabase.from('app_settings').upsert({key:'task_statuses', value:s});}}
+            onUpdateStatuses={handleUpdateStatuses}
             tags={taskTags}
-            onUpdateTags={(tags)=>{setTaskTags(tags); supabase.from('app_settings').upsert({key:'task_tags', value:tags});}}
+            onUpdateTags={handleUpdateTags}
         />;
       case 'finance':
         return <FinanceTracker 
@@ -181,13 +196,18 @@ export default function App() {
             await fetchData();
           }}
           onDeleteAsset={async(id)=>{
+            // 乐观更新：立即从本地 UI 移除
+            setAssets(prev => prev.filter(item => item.id !== id));
             try {
               const { error } = await supabase.from('assets').delete().eq('id', id); 
-              if (error) throw error;
+              if (error) {
+                console.error("Delete asset error:", error);
+                await fetchData(); // 如果失败了，重新抓取还原 UI
+                return;
+              }
+              // 不再需要显式 fetchData，因为乐观更新已经处理了本地状态
+            } catch (e) {
               await fetchData();
-            } catch (err) {
-              console.error("Asset deletion failed:", err);
-              alert("删除失败，请检查网络或权限");
             }
           }} 
           onAddFolder={async(f) => {
