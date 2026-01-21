@@ -22,21 +22,60 @@ export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddProm
   const [activePromptId, setActivePromptId] = useState<string | null>(null);
   const [localTopic, setLocalTopic] = useState('');
   const [activeTab, setActiveTab] = useState('全部');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   
   const editorRef = useRef<HTMLDivElement>(null);
+  const lastSavedContent = useRef<string>('');
   const theme = document.documentElement.className.includes('light') ? 'light' : 'dark';
 
+  // 渲染/初始化编辑器内容
   useEffect(() => {
     if (activePromptId) {
       const prompt = prompts.find(p => p.id === activePromptId);
       if (prompt && editorRef.current) {
         editorRef.current.innerHTML = prompt.content || '';
         setLocalTopic(prompt.title);
+        lastSavedContent.current = prompt.content || '';
       } else if (editorRef.current) {
         editorRef.current.innerHTML = '';
+        lastSavedContent.current = '';
       }
     }
   }, [activePromptId, prompts]);
+
+  // 自动保存逻辑 (每5秒检查一次变化)
+  useEffect(() => {
+    if (!activePromptId) return;
+
+    const autoSaveTimer = setInterval(() => {
+      if (editorRef.current) {
+        const currentContent = editorRef.current.innerHTML;
+        // 只有内容发生变化且不为空时才触发
+        if (currentContent !== lastSavedContent.current) {
+          performSave(currentContent);
+        }
+      }
+    }, 5000);
+
+    return () => clearInterval(autoSaveTimer);
+  }, [activePromptId, localTopic]);
+
+  const performSave = (content: string) => {
+    if (!activePromptId) return;
+    setSaveStatus('saving');
+    
+    onAddPrompt({
+      id: activePromptId,
+      title: localTopic || '未命名剧本',
+      content: content,
+      tags: activeTab === '全部' ? ['待处理'] : [activeTab],
+      createdAt: new Date().toISOString()
+    });
+    
+    lastSavedContent.current = content;
+    setTimeout(() => setSaveStatus('saved'), 500);
+    setTimeout(() => setSaveStatus('idle'), 3000);
+  };
 
   const exec = (command: string, value: any = undefined) => {
     if (!editorRef.current) return;
@@ -64,15 +103,14 @@ export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddProm
   const handleExitAndSave = () => {
     if (editorRef.current) {
       const content = editorRef.current.innerHTML;
-      if (localTopic || content) {
-        onAddPrompt({
-          id: activePromptId || Date.now().toString(),
-          title: localTopic || '未命名剧本',
-          content,
-          tags: activeTab === '全部' ? ['待处理'] : [activeTab],
-          createdAt: new Date().toISOString()
-        });
-      }
+      // 强制最后一次保存
+      onAddPrompt({
+        id: activePromptId || Date.now().toString(),
+        title: localTopic || '未命名剧本',
+        content,
+        tags: activeTab === '全部' ? ['待处理'] : [activeTab],
+        createdAt: new Date().toISOString()
+      });
     }
     setActivePromptId(null);
   };
@@ -137,10 +175,16 @@ export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddProm
           <div className="h-24 border-b flex items-center justify-between px-12 bg-white/95 dark:bg-slate-950/95 backdrop-blur-2xl z-[110]">
              <button onClick={handleExitAndSave} className="flex items-center gap-4 font-black text-sm group">
                 <div className="w-12 h-12 rounded-2xl border flex items-center justify-center group-hover:bg-slate-100 dark:group-hover:bg-slate-800 transition-all font-sans">←</div>
-                保存并退出
+                退出编辑器
              </button>
              <div className="flex items-center gap-6">
-                <span className="text-[10px] font-black uppercase opacity-20 tracking-widest">Auto Saving...</span>
+                <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all duration-500 flex items-center gap-2 ${
+                  saveStatus === 'saving' ? 'bg-blue-500/10 text-blue-500 animate-pulse' : 
+                  saveStatus === 'saved' ? 'bg-emerald-500/10 text-emerald-500' : 'opacity-20'
+                }`}>
+                  <div className={`w-1.5 h-1.5 rounded-full ${saveStatus === 'saving' ? 'bg-blue-500' : saveStatus === 'saved' ? 'bg-emerald-500' : 'bg-slate-400'}`}></div>
+                  {saveStatus === 'saving' ? '正在保存' : saveStatus === 'saved' ? '已自动保存' : '云端同步中'}
+                </div>
              </div>
           </div>
 

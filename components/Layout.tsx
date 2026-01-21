@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { ViewState } from '../types';
 
@@ -88,7 +87,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
       <nav className="flex-1 p-5 overflow-y-auto">
         {navItems.map(item => (
-          // Fixed type error by ensuring 'key' is handled by React and not passed as a component prop
+          /* key is passed directly to the element in map, not as part of NavItemProps */
           <NavItem 
             key={item.view}
             view={item.view} 
