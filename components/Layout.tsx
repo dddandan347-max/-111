@@ -87,7 +87,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
       <nav className="flex-1 p-5 overflow-y-auto">
         {navItems.map(item => (
-          /* key is passed directly to the element in map, not as part of NavItemProps */
+          /* FIX: Correctly mapping NavItem components. React uses the 'key' attribute internally to track elements in a list; it is not passed as a prop into the component. */
           <NavItem 
             key={item.view}
             view={item.view} 

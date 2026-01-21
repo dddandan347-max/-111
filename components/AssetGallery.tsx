@@ -30,12 +30,10 @@ export const AssetGallery: React.FC<AssetGalleryProps> = ({
   const [editingAssetId, setEditingAssetId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
 
-  // 文件夹编辑状态
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [folderEditName, setFolderEditName] = useState('');
   const [folderEditIcon, setFolderEditIcon] = useState('');
 
-  // 拖拽交互状态
   const [draggedAssetId, setDraggedAssetId] = useState<string | null>(null);
   const [dropOverFolderId, setDropOverFolderId] = useState<string | null>(null);
 
@@ -114,7 +112,6 @@ export const AssetGallery: React.FC<AssetGalleryProps> = ({
     setEditingAssetId(null);
   };
 
-  // 文件夹更新逻辑
   const submitFolderEdit = (folder: AssetFolder) => {
     if (folderEditName.trim()) {
       onAddFolder({ ...folder, name: folderEditName.trim(), icon: folderEditIcon.trim() });
@@ -122,7 +119,6 @@ export const AssetGallery: React.FC<AssetGalleryProps> = ({
     setEditingFolderId(null);
   };
 
-  // 拖拽逻辑实现
   const handleDragStart = (id: string) => {
     setDraggedAssetId(id);
   };
@@ -153,8 +149,6 @@ export const AssetGallery: React.FC<AssetGalleryProps> = ({
           <div className="flex flex-wrap gap-2 mt-6">
             <button 
               onClick={() => setActiveFolderId('all')}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => handleDrop('all')}
               className={`px-6 py-2.5 rounded-2xl text-[11px] font-black transition-all border ${
                 activeFolderId === 'all' 
                   ? (theme === 'dark' ? 'bg-blue-600 text-white border-blue-500 shadow-lg' : 'bg-rose-400 text-white border-rose-300 shadow-mochi-sm')
@@ -204,7 +198,7 @@ export const AssetGallery: React.FC<AssetGalleryProps> = ({
                   </button>
                 )}
                 <button 
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDeleteFolder(folder.id); }}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); if(confirm('删除文件夹？')) onDeleteFolder(folder.id); }}
                   className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover/folder:opacity-100 transition-opacity shadow-lg z-10"
                 >
                   ×
@@ -268,17 +262,16 @@ export const AssetGallery: React.FC<AssetGalleryProps> = ({
           >
             <img src={asset.dataUrl} alt={asset.name} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 pointer-events-none" loading="lazy" />
             
-            <div className="absolute top-4 right-4 z-[60]">
+            <div className="absolute top-4 right-4 z-[60] flex gap-2">
                 <button 
-                  type="button"
                   onClick={(e) => { 
                     e.preventDefault();
                     e.stopPropagation();
-                    onDeleteAsset(asset.id);
+                    if(confirm('彻底删除此素材？')) onDeleteAsset(asset.id);
                   }}
                   className="w-10 h-10 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center transition-all shadow-2xl hover:scale-110 active:scale-90 opacity-0 group-hover:opacity-100"
                 >
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
                 </button>
@@ -300,7 +293,6 @@ export const AssetGallery: React.FC<AssetGalleryProps> = ({
                         <option key={f.id} value={f.id}>{f.icon} {f.name}</option>
                       ))}
                     </select>
-                    <span className="text-[10px] text-white/50 opacity-0 group-hover:opacity-100 transition-opacity">可拖拽</span>
                   </div>
                   
                   {editingAssetId === asset.id ? (
