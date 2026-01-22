@@ -21,14 +21,14 @@ interface NavItemProps {
   theme: 'dark' | 'light';
 }
 
-const NavItem = ({ 
+const NavItem: React.FC<NavItemProps> = ({ 
   view, 
   label, 
   active, 
   onClick, 
   icon,
   theme
-}: NavItemProps) => {
+}) => {
   return (
     <button
       onClick={() => onClick(view)}

@@ -19,6 +19,7 @@ export const FinanceTracker: React.FC<FinanceProps> = ({
   transactions, onAddTransaction, onDeleteTransaction, tasks, categories, onUpdateCategories, users 
 }) => {
   const [settlePeriod, setSettlePeriod] = useState<SettlePeriod>('month');
+  const [viewMonth, setViewMonth] = useState(new Date().toISOString().substring(0, 7)); // 新增：控制查看月份
   const theme = document.documentElement.className.includes('light') ? 'light' : 'dark';
 
   const [desc, setDesc] = useState('');
@@ -28,8 +29,9 @@ export const FinanceTracker: React.FC<FinanceProps> = ({
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [operator, setOperator] = useState('');
 
+  // 成员结算统计 - 基于 viewMonth
   const userStats = useMemo(() => {
-    const currentMonth = date.substring(0, 7);
+    const currentMonth = viewMonth; 
     const stats: Record<string, { income: number, expense: number }> = {};
     
     users.forEach(u => stats[u] = { income: 0, expense: 0 });
@@ -42,7 +44,12 @@ export const FinanceTracker: React.FC<FinanceProps> = ({
       }
     });
     return Object.entries(stats).filter(([_, val]) => val.income > 0 || val.expense > 0);
-  }, [transactions, date, users]);
+  }, [transactions, viewMonth, users]);
+
+  // 财务流水列表 - 基于 viewMonth 过滤
+  const monthlyTransactions = useMemo(() => {
+    return transactions.filter(t => t.date.startsWith(viewMonth));
+  }, [transactions, viewMonth]);
 
   const trendData = useMemo(() => {
     const map = new Map<string, {name: string, income: number, expense: number}>();
@@ -203,9 +210,21 @@ export const FinanceTracker: React.FC<FinanceProps> = ({
 
       <div className={`p-10 rounded-[3rem] border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-mochi-border shadow-mochi'}`}>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
-              <h3 className={`text-2xl font-black ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>成员月度结算报表 ({date.substring(0, 7)})</h3>
-              <div className="px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest bg-slate-800/40 text-slate-500 border border-slate-800">
-                结算范围: {date.substring(0, 7)}
+              <div className="flex items-center gap-4">
+                  <h3 className={`text-2xl font-black ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>成员月度结算报表</h3>
+                  <input 
+                    type="month" 
+                    value={viewMonth} 
+                    onChange={(e) => setViewMonth(e.target.value)}
+                    className={`px-4 py-2 rounded-xl text-xs font-black border outline-none shadow-sm transition-all cursor-pointer ${
+                       theme === 'dark' 
+                       ? 'bg-slate-800 border-slate-700 text-white focus:border-blue-500 hover:bg-slate-700' 
+                       : 'bg-white border-mochi-border text-slate-700 focus:border-rose-400 hover:bg-slate-50'
+                    }`}
+                  />
+              </div>
+              <div className="px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest bg-slate-800/40 text-slate-500 border border-slate-800 hidden md:block">
+                查看范围: {viewMonth}
               </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -235,7 +254,7 @@ export const FinanceTracker: React.FC<FinanceProps> = ({
 
       <div className={`rounded-[2.5rem] border overflow-hidden transition-all duration-500 ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-mochi-border shadow-mochi'}`}>
         <div className="px-8 py-6 border-b dark:border-slate-800 flex justify-between items-center bg-slate-800/20">
-            <h3 className="font-black text-xs uppercase tracking-widest opacity-50">财务明细流水 (Recent Activity)</h3>
+            <h3 className="font-black text-xs uppercase tracking-widest opacity-50">财务明细流水 ({viewMonth})</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -250,7 +269,7 @@ export const FinanceTracker: React.FC<FinanceProps> = ({
               </tr>
             </thead>
             <tbody className={`divide-y ${theme === 'dark' ? 'divide-slate-800' : 'divide-mochi-border'}`}>
-              {transactions.map(t => (
+              {monthlyTransactions.map(t => (
                 <tr key={t.id} className={`${theme === 'dark' ? 'hover:bg-slate-800/40' : 'hover:bg-white/80'}`}>
                   <td className="px-6 py-5 text-xs font-mono opacity-60">{t.date}</td>
                   <td className="px-6 py-5 font-black text-sm">{t.description}</td>
@@ -275,9 +294,9 @@ export const FinanceTracker: React.FC<FinanceProps> = ({
                   </td>
                 </tr>
               ))}
-              {transactions.length === 0 && (
+              {monthlyTransactions.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-20 text-center opacity-20 italic font-black uppercase text-xs tracking-widest">暂无流水记录</td>
+                  <td colSpan={6} className="py-20 text-center opacity-20 italic font-black uppercase text-xs tracking-widest">本月暂无流水记录</td>
                 </tr>
               )}
             </tbody>

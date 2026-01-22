@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { VideoTask, TaskPriority, TaskStatusDef } from '../types';
 
@@ -12,6 +11,7 @@ interface TaskBoardProps {
   onUpdateStatuses: (s: TaskStatusDef[]) => void;
   tags: string[];
   onUpdateTags: (tags: string[]) => void;
+  users: string[]; // 新增：成员列表
 }
 
 const PRIORITY_CONFIG = {
@@ -38,11 +38,12 @@ const PRIORITY_CONFIG = {
 const TaskItemMobile: React.FC<{
   task: VideoTask;
   statuses: TaskStatusDef[];
+  users: string[];
   onUpdateTask: (task: VideoTask) => void;
   onDeleteTask: (id: string) => void;
   getStatusColor: (id: string) => string;
   theme: 'dark' | 'light';
-}> = ({ task, statuses, onUpdateTask, onDeleteTask, getStatusColor, theme }) => {
+}> = ({ task, statuses, users, onUpdateTask, onDeleteTask, getStatusColor, theme }) => {
   return (
     <div className={`p-5 rounded-[2rem] border mb-4 transition-all ${theme === 'dark' ? 'bg-slate-900 border-slate-800 shadow-lg' : 'bg-white border-mochi-border shadow-mochi-sm'}`}>
       <div className="flex justify-between items-start mb-4">
@@ -65,8 +66,15 @@ const TaskItemMobile: React.FC<{
       
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-bold opacity-40">执行者</span>
-          <span className="text-xs font-black">{task.assignee || '未认领'}</span>
+          <span className="text-xs font-bold opacity-40">负责人</span>
+          <select 
+            value={task.assignee || ''} 
+            onChange={(e) => onUpdateTask({ ...task, assignee: e.target.value })} 
+            className={`appearance-none px-3 py-1 rounded-xl text-[10px] font-black border text-center outline-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-mochi-bg border-mochi-border text-slate-700'}`}
+          >
+            <option value="">未认领</option>
+            {users.map(u => <option key={u} value={u}>{u}</option>)}
+          </select>
         </div>
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold opacity-40">状态</span>
@@ -89,16 +97,14 @@ const TaskItemMobile: React.FC<{
 
 export const TaskBoard: React.FC<TaskBoardProps> = ({ 
   tasks, onAddTask, onUpdateTask, onDeleteTask, currentUser, 
-  statuses, onUpdateStatuses, tags, onUpdateTags 
+  statuses, onUpdateStatuses, tags, onUpdateTags, users
 }) => {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [viewTab, setViewTab] = useState<'active' | 'done' | 'calendar'>('active');
   const theme = document.documentElement.className.includes('light') ? 'light' : 'dark';
 
-  // 核心逻辑：按开始时间排序并分类
   const sortedTasks = useMemo(() => {
     return [...tasks].sort((a, b) => {
-        // 使用开始时间排序，较新的排在上面
         const dateA = new Date(a.startDate).getTime();
         const dateB = new Date(b.startDate).getTime();
         return dateB - dateA;
@@ -186,6 +192,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
             key={task.id} 
             task={task} 
             statuses={statuses} 
+            users={users}
             onUpdateTask={onUpdateTask} 
             onDeleteTask={onDeleteTask} 
             getStatusColor={getStatusColor}
@@ -205,9 +212,9 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
                 }`}>
                   <th className="px-4 py-6 text-center">优先级</th>
                   <th className="px-4 py-6">状态</th>
-                  <th className="px-4 py-6">内容</th>
-                  <th className="px-4 py-6">负责人</th>
-                  <th className="px-4 py-6">开始日期</th>
+                  <th className="px-4 py-6">视频标题</th>
+                  <th className="px-4 py-6">执行负责人</th>
+                  <th className="px-4 py-6">开始时间</th>
                   <th className="px-4 py-6">截止</th>
                   <th className="px-4 py-6 text-center">操作</th>
                 </tr>
@@ -232,7 +239,16 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
                       </select>
                     </td>
                     <td className="px-4 py-5 font-black">{task.title}</td>
-                    <td className="px-4 py-5 text-xs font-black opacity-60">{task.assignee || '未认领'}</td>
+                    <td className="px-4 py-5">
+                      <select 
+                        value={task.assignee || ''} 
+                        onChange={(e) => onUpdateTask({ ...task, assignee: e.target.value })}
+                        className={`w-full appearance-none px-3 py-2 rounded-xl text-[10px] font-black border text-center outline-none transition-all hover:border-blue-500/50 ${theme === 'dark' ? 'bg-slate-900 text-slate-400 border-slate-700' : 'bg-mochi-bg text-slate-700 border-mochi-border'}`}
+                      >
+                        <option value="">点击指派成员...</option>
+                        {users.map(u => <option key={u} value={u}>{u}</option>)}
+                      </select>
+                    </td>
                     <td className="px-4 py-5 text-xs font-mono opacity-50">{task.startDate}</td>
                     <td className="px-4 py-5 text-xs font-mono">{task.deadline}</td>
                     <td className="px-4 py-5 text-center">

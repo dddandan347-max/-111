@@ -210,9 +210,10 @@ export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddProm
 
                 <section>
                    <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-30 mb-6">格式调节</h3>
-                   <div className="grid grid-cols-2 gap-3">
+                   <div className="grid grid-cols-3 gap-2">
                       <button onClick={() => exec('bold')} className="py-4 rounded-2xl border text-[10px] font-black bg-white dark:bg-slate-800 dark:border-slate-700 hover:border-blue-500 transition-all">加粗</button>
                       <button onClick={() => exec('italic')} className="py-4 rounded-2xl border text-[10px] font-black bg-white dark:bg-slate-800 dark:border-slate-700 italic hover:border-blue-500 transition-all">倾斜</button>
+                      <button onClick={() => exec('insertHorizontalRule')} className="py-4 rounded-2xl border text-[10px] font-black bg-white dark:bg-slate-800 dark:border-slate-700 hover:border-blue-500 transition-all">分割线</button>
                    </div>
                 </section>
 

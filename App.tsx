@@ -144,11 +144,12 @@ export default function App() {
   };
 
   const renderContent = () => {
-    const userList = users.map(u => u.username);
+    const userList = users.filter(u => u.isApproved).map(u => u.username);
     switch (currentView) {
       case 'tasks':
         return <TaskBoard 
             tasks={tasks} 
+            users={userList} // 传递成员列表
             onAddTask={async(t)=>{await supabase.from('tasks').insert({id:t.id, title:t.title, assignee:t.assignee, status:t.status, deadline:t.deadline, start_date:t.startDate, priority:t.priority, tag:t.tag, notes:t.notes}); fetchData();}} 
             onUpdateTask={async(t)=>{await supabase.from('tasks').update({title:t.title, status:t.status, assignee:t.assignee, deadline:t.deadline, start_date:t.startDate, priority:t.priority, tag:t.tag, notes:t.notes}).eq('id', t.id); fetchData();}} 
             onDeleteTask={async(id)=>{await supabase.from('tasks').delete().eq('id', id); fetchData();}} 
@@ -196,16 +197,14 @@ export default function App() {
             await fetchData();
           }}
           onDeleteAsset={async(id)=>{
-            // 乐观更新：立即从本地 UI 移除
             setAssets(prev => prev.filter(item => item.id !== id));
             try {
               const { error } = await supabase.from('assets').delete().eq('id', id); 
               if (error) {
                 console.error("Delete asset error:", error);
-                await fetchData(); // 如果失败了，重新抓取还原 UI
+                await fetchData();
                 return;
               }
-              // 不再需要显式 fetchData，因为乐观更新已经处理了本地状态
             } catch (e) {
               await fetchData();
             }
