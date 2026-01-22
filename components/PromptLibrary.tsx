@@ -26,20 +26,30 @@ export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddProm
   
   const editorRef = useRef<HTMLDivElement>(null);
   const lastSavedContent = useRef<string>('');
+  const prevPromptId = useRef<string | null>(null); // 新增：用于追踪上一次加载的剧本ID，防止重复渲染导致跳行
   const theme = document.documentElement.className.includes('light') ? 'light' : 'dark';
 
   // 渲染/初始化编辑器内容
   useEffect(() => {
     if (activePromptId) {
-      const prompt = prompts.find(p => p.id === activePromptId);
-      if (prompt && editorRef.current) {
-        editorRef.current.innerHTML = prompt.content || '';
-        setLocalTopic(prompt.title);
-        lastSavedContent.current = prompt.content || '';
-      } else if (editorRef.current) {
-        editorRef.current.innerHTML = '';
-        lastSavedContent.current = '';
+      // 只有当打开新的剧本(ID变化)时，才从 props 加载内容到 editor
+      // 这样可以避免 auto-save 更新 prompts 导致重新渲染 innerHTML，从而引起光标跳动
+      if (activePromptId !== prevPromptId.current) {
+        const prompt = prompts.find(p => p.id === activePromptId);
+        if (prompt && editorRef.current) {
+          editorRef.current.innerHTML = prompt.content || '';
+          setLocalTopic(prompt.title);
+          lastSavedContent.current = prompt.content || '';
+          prevPromptId.current = activePromptId;
+        } else if (!prompt && editorRef.current) {
+            // 新建剧本尚未保存到 prompts 列表的情况（或者被删除了），通常由新建按钮触发时ID已存在
+             editorRef.current.innerHTML = '';
+             lastSavedContent.current = '';
+             prevPromptId.current = activePromptId;
+        }
       }
+    } else {
+        prevPromptId.current = null;
     }
   }, [activePromptId, prompts]);
 
@@ -113,6 +123,7 @@ export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddProm
       });
     }
     setActivePromptId(null);
+    prevPromptId.current = null;
   };
 
   const filteredPrompts = useMemo(() => {
@@ -192,7 +203,7 @@ export const PromptLibrary: React.FC<PromptLibraryProps> = ({ prompts, onAddProm
             <div className="flex-1 overflow-y-auto pt-32 pb-80 custom-scrollbar scroll-smooth">
               <div className="max-w-4xl mx-auto px-12">
                  <input className="w-full bg-transparent text-8xl font-black mb-20 focus:outline-none placeholder:opacity-10 dark:text-white tracking-tighter" placeholder="请输入标题..." value={localTopic} onChange={e => setLocalTopic(e.target.value)} autoFocus />
-                 <div ref={editorRef} contentEditable className="w-full min-h-[1200px] bg-transparent text-2xl leading-[2.2] focus:outline-none outline-none prose prose-2xl dark:prose-invert max-w-none pb-60" placeholder="开始创作..." />
+                 <div ref={editorRef} contentEditable className="w-full min-h-[1200px] bg-transparent text-2xl leading-[2.2] focus:outline-none outline-none prose prose-2xl dark:prose-invert max-w-none pb-60 [&_hr]:border-t-[3px] [&_hr]:border-stone-800 dark:[&_hr]:border-slate-700" placeholder="开始创作..." />
               </div>
             </div>
 
